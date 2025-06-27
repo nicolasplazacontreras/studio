@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { type ClothingItem, type Outfit, type CanvasItems } from '@/lib/types';
+import { type ClothingItem, type Outfit, type CanvasItems, type LayoutItem } from '@/lib/types';
 import WardrobeSidebar from '@/components/wardrobe-sidebar';
 import OutfitCanvas from '@/components/outfit-canvas';
 import Header from '@/components/header';
@@ -21,31 +21,53 @@ const initialWardrobe: ClothingItem[] = [
   { id: '9', name: 'Leather Backpack', category: 'Bags', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "leather backpack" },
 ];
 
+const initialLayout: LayoutItem[] = [
+  { id: 'hats', category: 'Hats', row: 1, col: 1 },
+  { id: 'tops', category: 'Tops', row: 1, col: 2 },
+  { id: 'accessories', category: 'Accessories', row: 2, col: 1 },
+  { id: 'bottoms', category: 'Bottoms', row: 2, col: 2 },
+  { id: 'bags', category: 'Bags', row: 2, col: 3 },
+  { id: 'shoes', category: 'Shoes', row: 3, col: 2 },
+];
+const initialCategories = ['Hats', 'Tops', 'Bottoms', 'Shoes', 'Accessories', 'Bags'];
+const allGridSlots = Array.from({ length: 9 }, (_, i) => ({ row: Math.floor(i / 3) + 1, col: (i % 3) + 1 }));
+
 export default function Home() {
   const [wardrobe, setWardrobe] = useState<ClothingItem[]>([]);
   const [canvasItems, setCanvasItems] = useState<CanvasItems>({});
   const [aiSuggestions, setAiSuggestions] = useState<SuggestOutfitOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
+  
+  const [layout, setLayout] = useState<LayoutItem[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
 
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load wardrobe from localStorage or use initial data
+    // Load data from localStorage
     const savedWardrobe = localStorage.getItem('wrdrobe_wardrobe');
-    if (savedWardrobe) {
-      setWardrobe(JSON.parse(savedWardrobe));
-    } else {
-      setWardrobe(initialWardrobe);
-    }
+    setWardrobe(savedWardrobe ? JSON.parse(savedWardrobe) : initialWardrobe);
+
+    const savedLayout = localStorage.getItem('wrdrobe_layout');
+    setLayout(savedLayout ? JSON.parse(savedLayout) : initialLayout);
+
+    const savedCategories = localStorage.getItem('wrdrobe_categories');
+    setCategories(savedCategories ? JSON.parse(savedCategories) : initialCategories);
   }, []);
 
   useEffect(() => {
     // Save wardrobe to localStorage whenever it changes
-    if(wardrobe.length > 0) {
-      localStorage.setItem('wrdrobe_wardrobe', JSON.stringify(wardrobe));
-    }
+    if(wardrobe.length > 0) localStorage.setItem('wrdrobe_wardrobe', JSON.stringify(wardrobe));
   }, [wardrobe]);
+
+  useEffect(() => {
+    if(layout.length > 0) localStorage.setItem('wrdrobe_layout', JSON.stringify(layout));
+  }, [layout]);
+
+  useEffect(() => {
+    if(categories.length > 0) localStorage.setItem('wrdrobe_categories', JSON.stringify(categories));
+  }, [categories]);
 
 
   const handleAddItem = (item: Omit<ClothingItem, 'id'>) => {
@@ -95,7 +117,7 @@ export default function Home() {
     setWardrobe(prev => prev.filter(item => item.id !== itemId));
     // Also remove from canvas if it's there
     Object.entries(canvasItems).forEach(([category, item]) => {
-        if (item.id === itemId) {
+        if (item && item.id === itemId) {
             handleRemoveFromCanvas(category as keyof CanvasItems);
         }
     });
@@ -154,6 +176,43 @@ export default function Home() {
     });
   };
 
+  const handleAddDropZone = (category: string) => {
+    if (categories.includes(category)) {
+      toast({ variant: 'destructive', title: 'Category already exists' });
+      return;
+    }
+
+    const occupiedSlots = new Set(layout.map(zone => `${zone.row}-${zone.col}`));
+    const availableSlot = allGridSlots.find(slot => !occupiedSlots.has(`${slot.row}-${slot.col}`));
+
+    if (!availableSlot) {
+      toast({ variant: 'destructive', title: 'Canvas is full', description: 'No more space to add a new drop zone.' });
+      return;
+    }
+    
+    const newZone: LayoutItem = {
+        id: Date.now().toString(),
+        category,
+        row: availableSlot.row,
+        col: availableSlot.col,
+    };
+
+    setCategories(prev => [...prev, category]);
+    setLayout(prev => [...prev, newZone]);
+    toast({ title: 'Drop Zone Added', description: `Category "${category}" is now on the canvas.` });
+  };
+
+  const handleRemoveDropZone = (zoneId: string) => {
+    const zoneToRemove = layout.find(z => z.id === zoneId);
+    if (!zoneToRemove) return;
+
+    // Remove any item that was in the zone
+    handleRemoveFromCanvas(zoneToRemove.category);
+
+    setLayout(prev => prev.filter(z => z.id !== zoneId));
+    toast({ title: 'Drop Zone Removed', description: `Category "${zoneToRemove.category}" removed from canvas.` });
+  };
+
   return (
     <div className="flex h-screen w-full flex-col bg-background font-body">
       <Header />
@@ -164,13 +223,17 @@ export default function Home() {
           onGetAiSuggestions={handleGetAiSuggestions}
           isAiLoading={isAiLoading}
           onDeleteItem={handleDeleteItem}
+          categories={categories}
         />
         <OutfitCanvas
           items={canvasItems}
+          layout={layout}
           onDrop={handleDropOnCanvas}
-          onRemove={handleRemoveFromCanvas}
+          onRemoveItem={handleRemoveFromCanvas}
           onClear={handleClearCanvas}
           onSave={handleSaveOutfit}
+          onAddZone={handleAddDropZone}
+          onRemoveZone={handleRemoveDropZone}
         />
       </main>
       {aiSuggestions && (

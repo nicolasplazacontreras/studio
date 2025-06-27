@@ -13,14 +13,15 @@ interface WardrobeSidebarProps {
   onGetAiSuggestions: () => void;
   isAiLoading: boolean;
   onDeleteItem: (itemId: string) => void;
+  categories: string[];
 }
 
-export default function WardrobeSidebar({ items, onAddItem, onGetAiSuggestions, isAiLoading, onDeleteItem }: WardrobeSidebarProps) {
+export default function WardrobeSidebar({ items, onAddItem, onGetAiSuggestions, isAiLoading, onDeleteItem, categories }: WardrobeSidebarProps) {
   return (
     <aside className="flex w-full max-w-xs flex-col border-r">
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-lg font-semibold">My Wardrobe</h2>
-        <AddClothingItemDialog onAddItem={onAddItem}>
+        <AddClothingItemDialog onAddItem={onAddItem} categories={categories}>
           <Button size="sm" variant="ghost">
             <Plus className="mr-2 h-4 w-4" />
             Add Item

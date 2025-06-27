@@ -20,12 +20,13 @@ import type { ClothingItem } from '@/lib/types';
 interface AddClothingItemDialogProps {
   children: React.ReactNode;
   onAddItem: (item: Omit<ClothingItem, 'id'>) => void;
+  categories: string[];
 }
 
-export function AddClothingItemDialog({ children, onAddItem }: AddClothingItemDialogProps) {
+export function AddClothingItemDialog({ children, onAddItem, categories }: AddClothingItemDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<'Hats' | 'Tops' | 'Bottoms' | 'Shoes' | 'Accessories' | 'Bags' | ''>('');
+  const [category, setCategory] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const { toast } = useToast();
 
@@ -86,17 +87,14 @@ export function AddClothingItemDialog({ children, onAddItem }: AddClothingItemDi
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="category" className="text-right">Category</Label>
-            <Select onValueChange={(value) => setCategory(value as any)} value={category}>
+            <Select onValueChange={(value) => setCategory(value)} value={category}>
                 <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="Hats">Hats</SelectItem>
-                    <SelectItem value="Tops">Tops</SelectItem>
-                    <SelectItem value="Bottoms">Bottoms</SelectItem>
-                    <SelectItem value="Shoes">Shoes</SelectItem>
-                    <SelectItem value="Accessories">Accessories</SelectItem>
-                    <SelectItem value="Bags">Bags</SelectItem>
+                    {categories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
                 </SelectContent>
             </Select>
           </div>

@@ -2,20 +2,24 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { type ClothingItem, type CanvasItems } from '@/lib/types';
+import { type ClothingItem, type CanvasItems, type LayoutItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints } from 'lucide-react';
+import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { AddDropZoneDialog } from './add-dropzone-dialog';
 
 interface OutfitCanvasProps {
   items: CanvasItems;
+  layout: LayoutItem[];
   onDrop: (item: ClothingItem) => void;
-  onRemove: (category: keyof CanvasItems) => void;
+  onRemoveItem: (category: keyof CanvasItems) => void;
   onClear: () => void;
   onSave: () => void;
+  onAddZone: (category: string) => void;
+  onRemoveZone: (zoneId: string) => void;
 }
 
 const HatIcon = ({ className }: { className?: string }) => (
@@ -33,7 +37,7 @@ const PantsIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const categoryIcons: Record<keyof CanvasItems, React.ReactNode> = {
+const categoryIcons: Record<string, React.ReactNode> = {
   Hats: <HatIcon className="mx-auto h-8 w-8 mb-2" />,
   Tops: <Shirt className="mx-auto h-8 w-8 mb-2" />,
   Bottoms: <PantsIcon className="mx-auto h-8 w-8 mb-2" />,
@@ -43,31 +47,40 @@ const categoryIcons: Record<keyof CanvasItems, React.ReactNode> = {
 };
 
 
-const DropZone = ({ item, category, onDrop, onRemove }: {
+const DropZone = ({ item, category, onDrop, onRemoveItem, isEditing, onRemoveZone }: {
   item?: ClothingItem,
-  category: keyof CanvasItems,
-  onDrop: (e: React.DragEvent<HTMLDivElement>, category: keyof CanvasItems) => void,
-  onRemove: (category: keyof CanvasItems) => void
+  category: string,
+  onDrop: (e: React.DragEvent<HTMLDivElement>, category: string) => void,
+  onRemoveItem: (category: string) => void,
+  isEditing: boolean,
+  onRemoveZone: () => void,
 }) => {
   const [isOver, setIsOver] = useState(false);
-  const Icon = categoryIcons[category];
+  const Icon = categoryIcons[category] || <Shirt className="mx-auto h-8 w-8 mb-2" />;
 
   return (
     <div
       onDrop={(e) => {
+        if (isEditing) return;
         onDrop(e, category);
         setIsOver(false);
       }}
       onDragOver={(e) => {
+        if (isEditing) return;
         e.preventDefault();
         setIsOver(true);
       }}
       onDragLeave={() => setIsOver(false)}
       className={`relative flex items-center justify-center rounded-lg border-2 border-dashed transition-colors h-full ${
         isOver ? 'border-primary bg-accent' : 'border-border'
-      } ${item ? 'p-0' : 'p-4'}`}
+      } ${item && !isEditing ? 'p-0' : 'p-4'}`}
     >
-      {item ? (
+      {isEditing && (
+         <Button variant="destructive" size="icon" className="h-10 w-10 z-20" onClick={onRemoveZone}>
+            <Trash2 className="h-5 w-5" />
+        </Button>
+      )}
+      {!isEditing && item ? (
         <div className="group relative w-full h-full">
           <Image
             src={item.photoDataUri}
@@ -80,7 +93,7 @@ const DropZone = ({ item, category, onDrop, onRemove }: {
             variant="destructive"
             size="icon"
             className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-            onClick={() => onRemove(category)}
+            onClick={() => onRemoveItem(category)}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -88,10 +101,10 @@ const DropZone = ({ item, category, onDrop, onRemove }: {
             {item.name}
           </p>
         </div>
-      ) : (
+      ) : !isEditing && (
         <div className="text-center text-muted-foreground">
           {Icon}
-          <p>Drop {category}</p>
+          <p>{category}</p>
         </div>
       )}
     </div>
@@ -99,10 +112,12 @@ const DropZone = ({ item, category, onDrop, onRemove }: {
 };
 
 
-export default function OutfitCanvas({ items, onDrop, onRemove, onClear, onSave }: OutfitCanvasProps) {
+export default function OutfitCanvas({ items, layout, onDrop, onRemoveItem, onClear, onSave, onAddZone, onRemoveZone }: OutfitCanvasProps) {
   const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetCategory: keyof CanvasItems) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetCategory: string) => {
     e.preventDefault();
     const itemData = e.dataTransfer.getData('application/json');
     if (itemData) {
@@ -126,18 +141,27 @@ export default function OutfitCanvas({ items, onDrop, onRemove, onClear, onSave 
     });
   }
 
+  const handleAddZone = (categoryName: string) => {
+    onAddZone(categoryName);
+    setIsAddDialogOpen(false);
+  }
+
   return (
     <div className="flex flex-1 flex-col bg-muted/30 p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Outfit Canvas</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onSave}>
+           <Button variant={isEditing ? 'default' : 'outline'} size="sm" onClick={() => setIsEditing(!isEditing)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            {isEditing ? 'Done' : 'Edit'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={onSave} disabled={isEditing}>
             <Save className="mr-2 h-4 w-4" />
             Save
           </Button>
           <Dialog>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled={isEditing}>
                     <Download className="mr-2 h-4 w-4" />
                     Download
                 </Button>
@@ -166,33 +190,35 @@ export default function OutfitCanvas({ items, onDrop, onRemove, onClear, onSave 
                 <Button onClick={handleDownload}>Confirm Download</Button>
             </DialogContent>
           </Dialog>
-          <Button variant="destructive" size="sm" onClick={onClear}>
+          <Button variant="destructive" size="sm" onClick={onClear} disabled={isEditing}>
             <Trash2 className="mr-2 h-4 w-4" />
             Clear
           </Button>
         </div>
       </div>
       <div className="flex-1 grid grid-cols-3 grid-rows-3 gap-4">
-        <div className="col-start-1 row-start-1">
-            <DropZone item={items.Hats} category="Hats" onDrop={handleDrop} onRemove={onRemove} />
-        </div>
-        <div className="col-start-2 row-start-1">
-            <DropZone item={items.Tops} category="Tops" onDrop={handleDrop} onRemove={onRemove} />
-        </div>
-        
-        <div className="col-start-1 row-start-2">
-            <DropZone item={items.Accessories} category="Accessories" onDrop={handleDrop} onRemove={onRemove} />
-        </div>
-        <div className="col-start-2 row-start-2">
-            <DropZone item={items.Bottoms} category="Bottoms" onDrop={handleDrop} onRemove={onRemove} />
-        </div>
-        <div className="col-start-3 row-start-2">
-            <DropZone item={items.Bags} category="Bags" onDrop={handleDrop} onRemove={onRemove} />
-        </div>
-
-        <div className="col-start-2 row-start-3">
-            <DropZone item={items.Shoes} category="Shoes" onDrop={handleDrop} onRemove={onRemove} />
-        </div>
+        {layout.map(zone => (
+            <div key={zone.id} style={{ gridRow: zone.row, gridColumn: zone.col }}>
+                <DropZone
+                    item={items[zone.category]}
+                    category={zone.category}
+                    onDrop={handleDrop}
+                    onRemoveItem={onRemoveItem}
+                    isEditing={isEditing}
+                    onRemoveZone={() => onRemoveZone(zone.id)}
+                />
+            </div>
+        ))}
+         {isEditing && (
+            <div className='flex items-center justify-center'>
+                <AddDropZoneDialog onAddZone={handleAddZone}>
+                    <Button variant="outline" className='h-full w-full border-dashed'>
+                        <Plus className="h-6 w-6 mr-2" />
+                        Add Zone
+                    </Button>
+                </AddDropZoneDialog>
+            </div>
+        )}
       </div>
     </div>
   );
