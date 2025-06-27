@@ -8,6 +8,24 @@ import { Button } from "./ui/button";
 import { Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+const getItemStyle = (category: string): React.CSSProperties => {
+    switch (category) {
+        case 'Tops':
+            return { top: '15%', left: 0, width: '100%', height: '60%' };
+        case 'Bottoms':
+            return { bottom: '20%', left: 0, width: '100%', height: '50%' };
+        case 'Shoes':
+            return { bottom: 0, left: '25%', width: '50%', height: '25%' };
+        case 'Hats':
+            return { top: 0, left: '25%', width: '50%', height: '20%' };
+        case 'Bags':
+            return { top: '50%', right: '5%', width: '30%', height: '30%', transform: 'translateY(-50%)' };
+        case 'Accessories':
+        default:
+            return { top: '20%', right: '5%', width: '30%', height: '30%' };
+    }
+}
+
 export default function OutfitGalleryClient() {
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
   const { toast } = useToast();
@@ -49,12 +67,7 @@ export default function OutfitGalleryClient() {
                 width={200}
                 height={200}
                 className="absolute object-contain drop-shadow-md"
-                style={
-                    item.category === 'Tops' ? { top: 0, left: 0, width: '100%', height: '65%' } :
-                    item.category === 'Bottoms' ? { bottom: '20%', left: 0, width: '100%', height: '50%' } :
-                    item.category === 'Shoes' ? { bottom: 0, left: '25%', width: '50%', height: '25%' } :
-                    { top: '5%', right: '5%', width: '30%', height: '30%' }
-                }
+                style={getItemStyle(item.category)}
               />
             ))}
           </CardContent>

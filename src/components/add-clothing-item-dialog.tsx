@@ -25,7 +25,7 @@ interface AddClothingItemDialogProps {
 export function AddClothingItemDialog({ children, onAddItem }: AddClothingItemDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<'Tops' | 'Bottoms' | 'Shoes' | 'Accessories' | ''>('');
+  const [category, setCategory] = useState<'Hats' | 'Tops' | 'Bottoms' | 'Shoes' | 'Accessories' | 'Bags' | ''>('');
   const [photo, setPhoto] = useState<File | null>(null);
   const { toast } = useToast();
 
@@ -91,10 +91,12 @@ export function AddClothingItemDialog({ children, onAddItem }: AddClothingItemDi
                     <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
+                    <SelectItem value="Hats">Hats</SelectItem>
                     <SelectItem value="Tops">Tops</SelectItem>
                     <SelectItem value="Bottoms">Bottoms</SelectItem>
                     <SelectItem value="Shoes">Shoes</SelectItem>
                     <SelectItem value="Accessories">Accessories</SelectItem>
+                    <SelectItem value="Bags">Bags</SelectItem>
                 </SelectContent>
             </Select>
           </div>

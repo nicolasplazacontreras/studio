@@ -17,6 +17,8 @@ const initialWardrobe: ClothingItem[] = [
   { id: '5', name: 'Beige Chinos', category: 'Bottoms', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "beige chinos" },
   { id: '6', name: 'Brown Loafers', category: 'Shoes', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "brown loafers" },
   { id: '7', name: 'Gold Necklace', category: 'Accessories', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "gold necklace" },
+  { id: '8', name: 'Baseball Cap', category: 'Hats', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "baseball cap" },
+  { id: '9', name: 'Leather Backpack', category: 'Bags', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "leather backpack" },
 ];
 
 export default function Home() {

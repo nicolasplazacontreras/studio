@@ -50,17 +50,23 @@ export default function AiSuggestionsDialog({ isOpen, onOpenChange, suggestions,
                           {suggestion.items.map((item, itemIndex) => {
                              let style: React.CSSProperties = {};
                              switch (item.category.toLowerCase()) {
+                               case 'hats':
+                                 style = { top: 0, left: '25%', width: '50%', height: '25%' };
+                                 break;
                                case 'tops':
-                                 style = { top: '0', left: '0', width: '100%', height: '60%' };
+                                 style = { top: '20%', left: '10%', width: '80%', height: '50%' };
                                  break;
                                case 'bottoms':
-                                 style = { bottom: '0', left: '0', width: '100%', height: '50%' };
+                                 style = { bottom: '20%', left: '10%', width: '80%', height: '50%' };
                                  break;
                                case 'shoes':
-                                 style = { bottom: '0', right: '0', width: '45%', height: '25%' };
+                                 style = { bottom: '0', left: '25%', width: '50%', height: '20%' };
+                                 break;
+                               case 'bags':
+                                 style = { top: '40%', right: '-5%', width: '40%', height: '40%' };
                                  break;
                                case 'accessories':
-                                 style = { top: '5%', right: '5%', width: '30%', height: '30%' };
+                                 style = { top: '25%', left: '5%', width: '25%', height: '25%' };
                                  break;
                              }
                              return (

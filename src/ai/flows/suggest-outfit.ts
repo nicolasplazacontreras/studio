@@ -20,7 +20,7 @@ const SuggestOutfitInputSchema = z.object({
         .describe(
           "A photo of the clothing item, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
         ),
-      category: z.string().describe('The category of the clothing item (e.g., top, bottom, shoes).'),
+      category: z.string().describe('The category of the clothing item (e.g., hats, top, bottom, shoes, accessories, bags).'),
       description: z.string().optional().describe('Additional description of the clothing item.'),
     })
   ).describe('An array of clothing items in the user wardrobe.'),

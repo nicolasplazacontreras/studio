@@ -3,9 +3,8 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItems } from '@/lib/types';
-import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Download, Save, Shirt, Trash2, X } from 'lucide-react';
+import { Download, Save, Shirt, Trash2, X, ShoppingBag } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -26,7 +25,7 @@ const DropZone = ({ item, category, onDrop, onRemove }: {
   onRemove: (category: keyof CanvasItems) => void
 }) => {
   const [isOver, setIsOver] = useState(false);
-  const Icon = { Tops: Shirt, Bottoms: Shirt, Shoes: Shirt, Accessories: Shirt }[category] || Shirt; // Simplified icons
+  const Icon = { Hats: Shirt, Tops: Shirt, Bottoms: Shirt, Shoes: Shirt, Accessories: Shirt, Bags: ShoppingBag }[category] || Shirt;
 
   return (
     <div
@@ -39,7 +38,7 @@ const DropZone = ({ item, category, onDrop, onRemove }: {
         setIsOver(true);
       }}
       onDragLeave={() => setIsOver(false)}
-      className={`relative flex items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
+      className={`relative flex items-center justify-center rounded-lg border-2 border-dashed transition-colors h-full ${
         isOver ? 'border-primary bg-accent' : 'border-border'
       } ${item ? 'p-0' : 'p-4'}`}
     >
@@ -148,16 +147,26 @@ export default function OutfitCanvas({ items, onDrop, onRemove, onClear, onSave 
           </Button>
         </div>
       </div>
-      <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-4">
-        <div className="col-span-1 row-span-2">
+      <div className="flex-1 grid grid-cols-3 grid-rows-3 gap-4">
+        <div className="col-start-1 row-start-1">
+            <DropZone item={items.Hats} category="Hats" onDrop={handleDrop} onRemove={onRemove} />
+        </div>
+        <div className="col-start-2 row-start-1">
             <DropZone item={items.Tops} category="Tops" onDrop={handleDrop} onRemove={onRemove} />
         </div>
-        <div className="col-span-1 row-span-1">
+        
+        <div className="col-start-1 row-start-2">
+            <DropZone item={items.Accessories} category="Accessories" onDrop={handleDrop} onRemove={onRemove} />
+        </div>
+        <div className="col-start-2 row-start-2">
             <DropZone item={items.Bottoms} category="Bottoms" onDrop={handleDrop} onRemove={onRemove} />
         </div>
-        <div className="col-span-1 row-span-1 grid grid-cols-2 gap-4">
+        <div className="col-start-3 row-start-2">
+            <DropZone item={items.Bags} category="Bags" onDrop={handleDrop} onRemove={onRemove} />
+        </div>
+
+        <div className="col-start-2 row-start-3">
             <DropZone item={items.Shoes} category="Shoes" onDrop={handleDrop} onRemove={onRemove} />
-            <DropZone item={items.Accessories} category="Accessories" onDrop={handleDrop} onRemove={onRemove} />
         </div>
       </div>
     </div>
