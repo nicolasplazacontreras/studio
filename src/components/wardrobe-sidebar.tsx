@@ -6,6 +6,12 @@ import { ClothingItemCard } from './clothing-item-card';
 import { Button } from './ui/button';
 import { Plus, Sparkles } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface WardrobeSidebarProps {
   items: ClothingItem[];
@@ -17,6 +23,15 @@ interface WardrobeSidebarProps {
 }
 
 export default function WardrobeSidebar({ items, onAddItem, onGetAiSuggestions, isAiLoading, onDeleteItem, categories }: WardrobeSidebarProps) {
+  const itemsByCategory = items.reduce((acc, item) => {
+    const { category } = item;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(item);
+    return acc;
+  }, {} as Record<string, ClothingItem[]>);
+
   return (
     <aside className="flex w-full max-w-xs flex-col border-r">
       <div className="flex items-center justify-between p-4 border-b">
@@ -30,11 +45,31 @@ export default function WardrobeSidebar({ items, onAddItem, onGetAiSuggestions, 
       </div>
       <ScrollArea className="flex-1">
         {items.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 p-4">
-            {items.map((item) => (
-              <ClothingItemCard key={item.id} item={item} onDelete={() => onDeleteItem(item.id)} />
-            ))}
-          </div>
+          <Accordion type="multiple" defaultValue={categories} className="w-full">
+            {categories.map((category) => {
+              const categoryItems = itemsByCategory[category] || [];
+              return (
+                <AccordionItem value={category} key={category}>
+                  <AccordionTrigger className="px-4 hover:no-underline">
+                    {`${category} (${categoryItems.length})`}
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4">
+                    {categoryItems.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                        {categoryItems.map((item) => (
+                          <ClothingItemCard key={item.id} item={item} onDelete={() => onDeleteItem(item.id)} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        No items in this category.
+                      </p>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
             <p className="text-muted-foreground">Your wardrobe is empty.</p>
