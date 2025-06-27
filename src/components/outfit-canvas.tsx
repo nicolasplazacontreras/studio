@@ -20,6 +20,7 @@ interface OutfitCanvasProps {
   onSave: () => void;
   onAddZone: (category: string) => void;
   onRemoveZone: (zoneId: string) => void;
+  allCategories: string[];
 }
 
 const HatIcon = ({ className }: { className?: string }) => (
@@ -112,10 +113,9 @@ const DropZone = ({ item, category, onDrop, onRemoveItem, isEditing, onRemoveZon
 };
 
 
-export default function OutfitCanvas({ items, layout, onDrop, onRemoveItem, onClear, onSave, onAddZone, onRemoveZone }: OutfitCanvasProps) {
+export default function OutfitCanvas({ items, layout, onDrop, onRemoveItem, onClear, onSave, onAddZone, onRemoveZone, allCategories }: OutfitCanvasProps) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetCategory: string) => {
     e.preventDefault();
@@ -140,11 +140,8 @@ export default function OutfitCanvas({ items, layout, onDrop, onRemoveItem, onCl
         description: "Downloading outfit images will be available soon!",
     });
   }
-
-  const handleAddZone = (categoryName: string) => {
-    onAddZone(categoryName);
-    setIsAddDialogOpen(false);
-  }
+  
+  const currentCategoriesOnCanvas = layout.map(l => l.category);
 
   return (
     <div className="flex flex-1 flex-col bg-muted/30 p-4 md:p-6 lg:p-8">
@@ -211,7 +208,11 @@ export default function OutfitCanvas({ items, layout, onDrop, onRemoveItem, onCl
         ))}
          {isEditing && (
             <div className='flex items-center justify-center'>
-                <AddDropZoneDialog onAddZone={handleAddZone}>
+                <AddDropZoneDialog
+                    onAddZone={onAddZone}
+                    allCategories={allCategories}
+                    currentCategoriesOnCanvas={currentCategoriesOnCanvas}
+                >
                     <Button variant="outline" className='h-full w-full border-dashed'>
                         <Plus className="h-6 w-6 mr-2" />
                         Add Zone

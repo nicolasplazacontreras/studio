@@ -177,8 +177,8 @@ export default function Home() {
   };
 
   const handleAddDropZone = (category: string) => {
-    if (categories.includes(category)) {
-      toast({ variant: 'destructive', title: 'Category already exists' });
+    if (layout.map(l => l.category).includes(category)) {
+      toast({ variant: 'destructive', title: 'Category already on canvas' });
       return;
     }
 
@@ -196,8 +196,11 @@ export default function Home() {
         row: availableSlot.row,
         col: availableSlot.col,
     };
+    
+    if (!categories.includes(category)) {
+      setCategories(prev => [...prev, category]);
+    }
 
-    setCategories(prev => [...prev, category]);
     setLayout(prev => [...prev, newZone]);
     toast({ title: 'Drop Zone Added', description: `Category "${category}" is now on the canvas.` });
   };
@@ -234,6 +237,7 @@ export default function Home() {
           onSave={handleSaveOutfit}
           onAddZone={handleAddDropZone}
           onRemoveZone={handleRemoveDropZone}
+          allCategories={categories}
         />
       </main>
       {aiSuggestions && (
