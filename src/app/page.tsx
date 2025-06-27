@@ -231,6 +231,7 @@ export default function Home() {
         <OutfitCanvas
           items={canvasItems}
           layout={layout}
+          setLayout={setLayout}
           onDrop={handleDropOnCanvas}
           onRemoveItem={handleRemoveFromCanvas}
           onClear={handleClearCanvas}

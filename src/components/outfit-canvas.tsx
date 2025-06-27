@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItems, type LayoutItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus } from 'lucide-react';
+import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus, GripVertical } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -14,6 +14,7 @@ import { AddDropZoneDialog } from './add-dropzone-dialog';
 interface OutfitCanvasProps {
   items: CanvasItems;
   layout: LayoutItem[];
+  setLayout: React.Dispatch<React.SetStateAction<LayoutItem[]>>;
   onDrop: (item: ClothingItem) => void;
   onRemoveItem: (category: keyof CanvasItems) => void;
   onClear: () => void;
@@ -48,40 +49,75 @@ const categoryIcons: Record<string, React.ReactNode> = {
 };
 
 
-const DropZone = ({ item, category, onDrop, onRemoveItem, isEditing, onRemoveZone }: {
+const DropZone = ({ 
+    item,
+    category,
+    onDrop,
+    onRemoveItem,
+    isEditing,
+    onRemoveZone,
+    zoneId,
+    onZoneDragStart,
+    onZoneDrop,
+    isBeingDragged
+}: {
   item?: ClothingItem,
   category: string,
   onDrop: (e: React.DragEvent<HTMLDivElement>, category: string) => void,
   onRemoveItem: (category: string) => void,
   isEditing: boolean,
   onRemoveZone: () => void,
+  zoneId: string,
+  onZoneDragStart: (e: React.DragEvent<HTMLDivElement>, zoneId:string) => void,
+  onZoneDrop: (e: React.DragEvent<HTMLDivElement>, zoneId: string) => void,
+  isBeingDragged: boolean
 }) => {
   const [isOver, setIsOver] = useState(false);
   const Icon = categoryIcons[category] || <Shirt className="mx-auto h-8 w-8 mb-2" />;
+  const dataTransferTypeZone = 'application/vnd.wrdrobe.zone-id';
 
   return (
     <div
+      draggable={isEditing}
+      onDragStart={(e) => { if (isEditing) onZoneDragStart(e, zoneId) }}
       onDrop={(e) => {
-        if (isEditing) return;
-        onDrop(e, category);
         setIsOver(false);
+        const draggedZoneId = e.dataTransfer.getData(dataTransferTypeZone);
+        const draggedItemId = e.dataTransfer.getData('application/json');
+        
+        if (isEditing && draggedZoneId) {
+            onZoneDrop(e, zoneId);
+        } else if (!isEditing && draggedItemId) {
+            onDrop(e, category);
+        }
       }}
       onDragOver={(e) => {
-        if (isEditing) return;
         e.preventDefault();
+        if (isEditing) {
+          e.dataTransfer.dropEffect = "move";
+        }
         setIsOver(true);
       }}
       onDragLeave={() => setIsOver(false)}
-      className={`relative flex items-center justify-center rounded-lg border-2 border-dashed transition-colors h-full ${
-        isOver ? 'border-primary bg-accent' : 'border-border'
-      } ${item && !isEditing ? 'p-0' : 'p-4'}`}
+      className={`relative flex items-center justify-center rounded-lg border-2 border-dashed transition-all h-full
+      ${isEditing ? 'cursor-grab active:cursor-grabbing' : ''}
+      ${isOver && (isEditing || !item) ? 'border-primary bg-accent' : 'border-border'} 
+      ${item && !isEditing ? 'p-0' : 'p-4'}
+      ${isBeingDragged ? 'opacity-30' : 'opacity-100'}
+      `}
     >
-      {isEditing && (
-         <Button variant="destructive" size="icon" className="h-10 w-10 z-20" onClick={onRemoveZone}>
-            <Trash2 className="h-5 w-5" />
-        </Button>
-      )}
-      {!isEditing && item ? (
+      {isEditing ? (
+        <>
+            <GripVertical className="absolute top-1/2 left-2 -translate-y-1/2 h-6 w-6 text-muted-foreground pointer-events-none" />
+            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 z-20" onClick={onRemoveZone}>
+                <Trash2 className="h-4 w-4" />
+            </Button>
+            <div className="text-center text-muted-foreground pointer-events-none">
+              {Icon}
+              <p>{category}</p>
+            </div>
+        </>
+      ) : item ? (
         <div className="group relative w-full h-full">
           <Image
             src={item.photoDataUri}
@@ -102,7 +138,7 @@ const DropZone = ({ item, category, onDrop, onRemoveItem, isEditing, onRemoveZon
             {item.name}
           </p>
         </div>
-      ) : !isEditing && (
+      ) : (
         <div className="text-center text-muted-foreground">
           {Icon}
           <p>{category}</p>
@@ -113,9 +149,11 @@ const DropZone = ({ item, category, onDrop, onRemoveItem, isEditing, onRemoveZon
 };
 
 
-export default function OutfitCanvas({ items, layout, onDrop, onRemoveItem, onClear, onSave, onAddZone, onRemoveZone, allCategories }: OutfitCanvasProps) {
+export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemoveItem, onClear, onSave, onAddZone, onRemoveZone, allCategories }: OutfitCanvasProps) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [draggedZoneId, setDraggedZoneId] = useState<string | null>(null);
+  const dataTransferTypeZone = 'application/vnd.wrdrobe.zone-id';
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetCategory: string) => {
     e.preventDefault();
@@ -141,12 +179,43 @@ export default function OutfitCanvas({ items, layout, onDrop, onRemoveItem, onCl
     });
   }
   
+  const handleZoneDragStart = (e: React.DragEvent<HTMLDivElement>, zoneId: string) => {
+      e.dataTransfer.setData(dataTransferTypeZone, zoneId);
+      e.dataTransfer.effectAllowed = 'move';
+      setDraggedZoneId(zoneId);
+  };
+
+  const handleZoneDrop = (e: React.DragEvent<HTMLDivElement>, targetZoneId: string) => {
+      e.preventDefault();
+      const sourceZoneId = e.dataTransfer.getData(dataTransferTypeZone);
+      
+      if (sourceZoneId && sourceZoneId !== targetZoneId) {
+          setLayout(prevLayout => {
+              const newLayout = [...prevLayout];
+              const sourceZoneIndex = newLayout.findIndex(z => z.id === sourceZoneId);
+              const targetZoneIndex = newLayout.findIndex(z => z.id === targetZoneId);
+
+              if (sourceZoneIndex > -1 && targetZoneIndex > -1) {
+                  const sourceZone = newLayout[sourceZoneIndex];
+                  const targetZone = newLayout[targetZoneIndex];
+                  
+                  // Swap row and col
+                  [sourceZone.row, targetZone.row] = [targetZone.row, sourceZone.row];
+                  [sourceZone.col, targetZone.col] = [targetZone.col, sourceZone.col];
+              }
+              return newLayout;
+          });
+      }
+      setDraggedZoneId(null);
+  };
+
+
   const currentCategoriesOnCanvas = layout.map(l => l.category);
 
   return (
     <div className="flex flex-1 flex-col bg-muted/30 p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Outfit Canvas</h1>
+        <h2 className="text-2xl font-bold">Outfit Canvas</h2>
         <div className="flex items-center gap-2">
            <Button variant={isEditing ? 'default' : 'outline'} size="sm" onClick={() => setIsEditing(!isEditing)}>
             <Pencil className="mr-2 h-4 w-4" />
@@ -203,6 +272,10 @@ export default function OutfitCanvas({ items, layout, onDrop, onRemoveItem, onCl
                     onRemoveItem={onRemoveItem}
                     isEditing={isEditing}
                     onRemoveZone={() => onRemoveZone(zone.id)}
+                    zoneId={zone.id}
+                    onZoneDragStart={handleZoneDragStart}
+                    onZoneDrop={handleZoneDrop}
+                    isBeingDragged={draggedZoneId === zone.id}
                 />
             </div>
         ))}
