@@ -4,12 +4,13 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItems, type LayoutItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus, GripVertical } from 'lucide-react';
+import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus, GripVertical, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { AddDropZoneDialog } from './add-dropzone-dialog';
+import { generateOutfitImage } from '@/ai/flows/generate-outfit-image';
 
 interface OutfitCanvasProps {
   items: CanvasItems;
@@ -155,6 +156,10 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
   const [draggedZoneId, setDraggedZoneId] = useState<string | null>(null);
   const dataTransferTypeZone = 'application/vnd.wrdrobe.zone-id';
 
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState("1:1");
+  const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
+
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetCategory: string) => {
     e.preventDefault();
     const itemData = e.dataTransfer.getData('application/json');
@@ -172,12 +177,59 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    if (Object.values(items).every(item => !item)) {
+        toast({
+            variant: "destructive",
+            title: "Canvas is empty",
+            description: "Add some items to the canvas to download an outfit.",
+        });
+        return;
+    }
+
+    setIsDownloading(true);
     toast({
-        title: "Feature in development",
-        description: "Downloading outfit images will be available soon!",
+        title: "Generating your outfit image...",
+        description: "This might take a moment.",
     });
-  }
+
+    try {
+        const outfitItems = Object.values(items)
+            .filter((item): item is ClothingItem => !!item)
+            .map(item => ({
+                photoDataUri: item.photoDataUri,
+                category: item.category,
+            }));
+
+        const result = await generateOutfitImage({
+            items: outfitItems,
+            aspectRatio: aspectRatio,
+        });
+
+        const link = document.createElement('a');
+        link.href = result.photoDataUri;
+        link.download = `wrdrobe-outfit-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setIsDownloadDialogOpen(false);
+        toast({
+            title: "Download started!",
+            description: "Your outfit image is being downloaded.",
+        });
+
+    } catch (error) {
+        console.error("Download failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Download Failed",
+            description: "Could not generate the outfit image. Please try again.",
+        });
+    } finally {
+        setIsDownloading(false);
+    }
+  };
   
   const handleZoneDragStart = (e: React.DragEvent<HTMLDivElement>, zoneId: string) => {
       e.dataTransfer.setData(dataTransferTypeZone, zoneId);
@@ -228,7 +280,7 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
             <Save className="mr-2 h-4 w-4" />
             Save
           </Button>
-          <Dialog>
+          <Dialog open={isDownloadDialogOpen} onOpenChange={setIsDownloadDialogOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline" size="sm" disabled={isEditing}>
                     <Download className="mr-2 h-4 w-4" />
@@ -241,7 +293,7 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
                     <DialogDescription>Choose an aspect ratio for your image.</DialogDescription>
                 </DialogHeader>
                 <div className='py-4'>
-                    <RadioGroup defaultValue="1:1" className='flex gap-4'>
+                    <RadioGroup defaultValue="1:1" className='flex gap-4' onValueChange={setAspectRatio} disabled={isDownloading}>
                         <div className='flex items-center space-x-2'>
                             <RadioGroupItem value="1:1" id="r1"/>
                             <Label htmlFor="r1">1:1 (Square)</Label>
@@ -256,7 +308,16 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
                         </div>
                     </RadioGroup>
                 </div>
-                <Button onClick={handleDownload}>Confirm Download</Button>
+                <Button onClick={handleDownload} disabled={isDownloading}>
+                    {isDownloading ? (
+                        <>
+                            <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                            Generating...
+                        </>
+                    ) : (
+                        "Confirm Download"
+                    )}
+                </Button>
             </DialogContent>
           </Dialog>
           <Button variant="destructive" size="sm" onClick={onClear} disabled={isEditing}>
