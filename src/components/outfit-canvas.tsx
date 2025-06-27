@@ -186,27 +186,30 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
   };
 
   const handleZoneDrop = (e: React.DragEvent<HTMLDivElement>, targetZoneId: string) => {
-      e.preventDefault();
-      const sourceZoneId = e.dataTransfer.getData(dataTransferTypeZone);
-      
-      if (sourceZoneId && sourceZoneId !== targetZoneId) {
-          setLayout(prevLayout => {
-              const newLayout = [...prevLayout];
-              const sourceZoneIndex = newLayout.findIndex(z => z.id === sourceZoneId);
-              const targetZoneIndex = newLayout.findIndex(z => z.id === targetZoneId);
+    e.preventDefault();
+    const sourceZoneId = e.dataTransfer.getData(dataTransferTypeZone);
+    
+    if (sourceZoneId && sourceZoneId !== targetZoneId) {
+        setLayout(prevLayout => {
+            const sourceZone = prevLayout.find(z => z.id === sourceZoneId);
+            const targetZone = prevLayout.find(z => z.id === targetZoneId);
 
-              if (sourceZoneIndex > -1 && targetZoneIndex > -1) {
-                  const sourceZone = newLayout[sourceZoneIndex];
-                  const targetZone = newLayout[targetZoneIndex];
-                  
-                  // Swap row and col
-                  [sourceZone.row, targetZone.row] = [targetZone.row, sourceZone.row];
-                  [sourceZone.col, targetZone.col] = [targetZone.col, sourceZone.col];
-              }
-              return newLayout;
-          });
-      }
-      setDraggedZoneId(null);
+            if (!sourceZone || !targetZone) return prevLayout;
+
+            const newLayout = prevLayout.map(zone => {
+                if (zone.id === sourceZoneId) {
+                    return { ...zone, row: targetZone.row, col: targetZone.col };
+                }
+                if (zone.id === targetZoneId) {
+                    return { ...zone, row: sourceZone.row, col: sourceZone.col };
+                }
+                return zone;
+            });
+
+            return newLayout;
+        });
+    }
+    setDraggedZoneId(null);
   };
 
 
