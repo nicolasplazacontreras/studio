@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { GalleryHorizontal } from 'lucide-react';
+import { ThemeToggle } from './theme-toggle';
 
 export default function Header() {
   return (
@@ -8,13 +9,14 @@ export default function Header() {
       <Link href="/" className="text-xl font-semibold tracking-tighter text-primary">
         WRDROBE
       </Link>
-      <nav>
+      <nav className="flex items-center gap-2">
         <Button asChild variant="ghost" size="sm">
           <Link href="/gallery">
             <GalleryHorizontal className="mr-2 h-4 w-4" />
             My Outfits
           </Link>
         </Button>
+        <ThemeToggle />
       </nav>
     </header>
   );
