@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItems, type LayoutItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus, GripVertical, Sparkles } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus, GripVertical, Sparkles, HardDriveDownload } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { AddDropZoneDialog } from './add-dropzone-dialog';
 import { generateOutfitImage } from '@/ai/flows/generate-outfit-image';
+import { toJpeg } from 'html-to-image';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 interface OutfitCanvasProps {
   items: CanvasItems;
@@ -155,8 +157,10 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
   const [isEditing, setIsEditing] = useState(false);
   const [draggedZoneId, setDraggedZoneId] = useState<string | null>(null);
   const dataTransferTypeZone = 'application/vnd.wrdrobe.zone-id';
-
+  
+  const canvasRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
 
@@ -174,6 +178,51 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
             description: `This item belongs in ${item.category}, not ${targetCategory}.`,
         });
       }
+    }
+  };
+
+  const handleSimpleDownload = async () => {
+    if (!canvasRef.current) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not find the canvas to export.",
+        });
+        return;
+    }
+    if (Object.values(items).every(item => !item)) {
+        toast({
+            variant: "destructive",
+            title: "Canvas is empty",
+            description: "Add some items to the canvas to download an outfit.",
+        });
+        return;
+    }
+
+    setIsExporting(true);
+    toast({ title: "Preparing your image..." });
+
+    try {
+        const dataUrl = await toJpeg(canvasRef.current, { quality: 0.95 });
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `wrdrobe-outfit-canvas-${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({
+            title: "Download started!",
+            description: "Your outfit image is being downloaded.",
+        });
+    } catch (error) {
+        console.error("Simple download failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Export Failed",
+            description: "Could not export the canvas image. Please try again.",
+        });
+    } finally {
+        setIsExporting(false);
     }
   };
 
@@ -280,13 +329,27 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
             <Save className="mr-2 h-4 w-4" />
             Save
           </Button>
-          <Dialog open={isDownloadDialogOpen} onOpenChange={setIsDownloadDialogOpen}>
-            <DialogTrigger asChild>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={isEditing}>
                     <Download className="mr-2 h-4 w-4" />
                     Download
                 </Button>
-            </DialogTrigger>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setIsDownloadDialogOpen(true)} disabled={isDownloading}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate with AI
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSimpleDownload} disabled={isExporting}>
+                    {isExporting ? <Sparkles className="mr-2 h-4 w-4 animate-spin" /> : <HardDriveDownload className="mr-2 h-4 w-4" />}
+                    {isExporting ? 'Exporting...' : 'Export as JPG'}
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Dialog open={isDownloadDialogOpen} onOpenChange={setIsDownloadDialogOpen}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Download Outfit</DialogTitle>
@@ -326,7 +389,7 @@ export default function OutfitCanvas({ items, layout, setLayout, onDrop, onRemov
           </Button>
         </div>
       </div>
-      <div className="flex-1 grid grid-cols-3 grid-rows-3 gap-4">
+      <div ref={canvasRef} className="flex-1 grid grid-cols-3 grid-rows-3 gap-4">
         {layout.map(zone => (
             <div key={zone.id} style={{ gridRow: zone.row, gridColumn: zone.col }}>
                 <DropZone
