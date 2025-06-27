@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItems } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Shirt, Trash2, X, ShoppingBag } from 'lucide-react';
+import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -18,6 +18,31 @@ interface OutfitCanvasProps {
   onSave: () => void;
 }
 
+const HatIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 2a5 5 0 0 0-5 5v1h10V7a5 5 0 0 0-5-5Z"/>
+    <path d="M12 8H2.5A1.5 1.5 0 0 0 1 9.5V11h22V9.5A1.5 1.5 0 0 0 21.5 8H12Z"/>
+  </svg>
+);
+
+const PantsIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M9 2v10H6v10h5" />
+    <path d="M15 2v10h3v10h-5" />
+    <path d="M9 2h6" />
+  </svg>
+);
+
+const categoryIcons: Record<keyof CanvasItems, React.ReactNode> = {
+  Hats: <HatIcon className="mx-auto h-8 w-8 mb-2" />,
+  Tops: <Shirt className="mx-auto h-8 w-8 mb-2" />,
+  Bottoms: <PantsIcon className="mx-auto h-8 w-8 mb-2" />,
+  Shoes: <Footprints className="mx-auto h-8 w-8 mb-2" />,
+  Accessories: <Gem className="mx-auto h-8 w-8 mb-2" />,
+  Bags: <ShoppingBag className="mx-auto h-8 w-8 mb-2" />,
+};
+
+
 const DropZone = ({ item, category, onDrop, onRemove }: {
   item?: ClothingItem,
   category: keyof CanvasItems,
@@ -25,7 +50,7 @@ const DropZone = ({ item, category, onDrop, onRemove }: {
   onRemove: (category: keyof CanvasItems) => void
 }) => {
   const [isOver, setIsOver] = useState(false);
-  const Icon = { Hats: Shirt, Tops: Shirt, Bottoms: Shirt, Shoes: Shirt, Accessories: Shirt, Bags: ShoppingBag }[category] || Shirt;
+  const Icon = categoryIcons[category];
 
   return (
     <div
@@ -65,7 +90,7 @@ const DropZone = ({ item, category, onDrop, onRemove }: {
         </div>
       ) : (
         <div className="text-center text-muted-foreground">
-          <Icon className="mx-auto h-8 w-8 mb-2" />
+          {Icon}
           <p>Drop {category}</p>
         </div>
       )}
