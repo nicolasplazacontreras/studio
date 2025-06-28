@@ -4,12 +4,13 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Wand2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { generateOutfitImage } from '@/ai/flows/generate-outfit-image';
+import { removeBackground } from '@/ai/flows/remove-background';
 import { toJpeg } from 'html-to-image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Rnd } from 'react-rnd';
@@ -18,6 +19,7 @@ interface OutfitCanvasProps {
   items: CanvasItem[];
   setItems: (items: CanvasItem[]) => void;
   onSave: () => void;
+  onItemUpdate: (item: ClothingItem) => void;
 }
 
 const checkIntersection = (rect1: DOMRect, rect2: DOMRect) => {
@@ -27,7 +29,7 @@ const checkIntersection = (rect1: DOMRect, rect2: DOMRect) => {
            rect2.bottom < rect1.top);
 };
 
-export default function OutfitCanvas({ items, setItems, onSave }: OutfitCanvasProps) {
+export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: OutfitCanvasProps) {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<{[key: string]: HTMLDivElement}>({});
@@ -37,6 +39,7 @@ export default function OutfitCanvas({ items, setItems, onSave }: OutfitCanvasPr
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
   const [isOver, setIsOver] = useState(false);
+  const [processingItemId, setProcessingItemId] = useState<string | null>(null);
 
   // New state for multi-select
   const [selectedInstanceIds, setSelectedInstanceIds] = useState<string[]>([]);
@@ -126,6 +129,27 @@ export default function OutfitCanvas({ items, setItems, onSave }: OutfitCanvasPr
     }
   };
 
+  const handleRemoveBackground = async (canvasItem: CanvasItem) => {
+    if (processingItemId) return;
+    setProcessingItemId(canvasItem.instanceId);
+    toast({ title: "Removing background...", description: "The AI is working its magic. This may take a moment." });
+
+    try {
+        const result = await removeBackground({ photoDataUri: canvasItem.item.photoDataUri });
+        const updatedItem: ClothingItem = {
+            ...canvasItem.item,
+            photoDataUri: result.photoDataUri,
+        };
+        onItemUpdate(updatedItem);
+        toast({ title: "Background removed!" });
+    } catch (error) {
+        console.error("Background removal failed:", error);
+        toast({ variant: "destructive", title: "Background removal failed", description: "The AI couldn't process this image. Please try another." });
+    } finally {
+        setProcessingItemId(null);
+    }
+  };
+
   const handleMouseDownOnCanvas = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target !== canvasRef.current) return;
     e.preventDefault();
@@ -143,7 +167,7 @@ export default function OutfitCanvas({ items, setItems, onSave }: OutfitCanvasPr
       if (!isSelecting || !selectionBox) return;
       e.preventDefault();
 
-      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const canvasRect = canvasRef.current!.getBoundingClientRect();
       const currentX = e.clientX - canvasRect.left;
       const currentY = e.clientY - canvasRect.top;
       
@@ -326,6 +350,19 @@ export default function OutfitCanvas({ items, setItems, onSave }: OutfitCanvasPr
                         className="object-cover pointer-events-none"
                     />
                     <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute -top-3 -left-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveBackground(canvasItem);
+                        }}
+                        disabled={!!processingItemId}
+                        title="Remove background"
+                    >
+                        {processingItemId === canvasItem.instanceId ? <Sparkles className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                    </Button>
+                    <Button
                         variant="destructive"
                         size="icon"
                         className="absolute -top-3 -right-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
@@ -336,6 +373,11 @@ export default function OutfitCanvas({ items, setItems, onSave }: OutfitCanvasPr
                     >
                         <X className="h-4 w-4" />
                     </Button>
+                    {processingItemId === canvasItem.instanceId && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md pointer-events-none">
+                            <Sparkles className="h-8 w-8 text-white animate-spin" />
+                        </div>
+                    )}
                 </div>
             </Rnd>
         ))}

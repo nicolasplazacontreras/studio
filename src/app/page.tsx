@@ -190,6 +190,7 @@ export default function Home() {
           items={canvasItems}
           setItems={setCanvasItems}
           onSave={handleSaveOutfit}
+          onItemUpdate={handleUpdateItem}
         />
       </main>
       {aiSuggestions && (
