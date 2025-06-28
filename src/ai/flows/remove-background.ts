@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for removing the background from an image.
+ * @fileOverview A Genkit flow for creating a magazine-style cutout image of a clothing item.
  *
- * - removeBackground - A function that removes the background from an image.
+ * - removeBackground - A function that creates a cutout image from an original photo.
  * - RemoveBackgroundInput - The input type for the removeBackground function.
  * - RemoveBackgroundOutput - The return type for the removeBackground function.
  */
@@ -16,7 +16,7 @@ const RemoveBackgroundInputSchema = z.object({
 export type RemoveBackgroundInput = z.infer<typeof RemoveBackgroundInputSchema>;
 
 const RemoveBackgroundOutputSchema = z.object({
-  photoDataUri: z.string().describe("The processed image with the background removed, as a data URI."),
+  photoDataUri: z.string().describe("The processed cutout image with a white border and transparent background, as a data URI."),
 });
 export type RemoveBackgroundOutput = z.infer<typeof RemoveBackgroundOutputSchema>;
 
@@ -35,7 +35,10 @@ const removeBackgroundFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         { media: { url: input.photoDataUri } },
-        { text: "Given this image of a clothing item, create a new image of the exact same item but with the background completely removed and made transparent. The output should be a PNG with an alpha channel. Do not alter the item itself." }
+        { text: `You are an expert digital artist creating assets for a fashion collage. Given this image of a clothing item, create a new image that looks like a "cutout" from a fashion magazine.
+First, perfectly isolate the clothing item from its background.
+Then, give the isolated item a slightly irregular, thick white border, making it look as if it were carefully cut out with scissors.
+The final output must be a PNG image with a transparent background outside of the white border. Do not alter the clothing item itself.` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],

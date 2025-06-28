@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Wand2 } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -129,10 +129,10 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
     }
   };
 
-  const handleRemoveBackground = async (canvasItem: CanvasItem) => {
+  const handleCreateCutout = async (canvasItem: CanvasItem) => {
     if (processingItemId) return;
     setProcessingItemId(canvasItem.instanceId);
-    toast({ title: "Removing background...", description: "The AI is working its magic. This may take a moment." });
+    toast({ title: "Creating cutout...", description: "The AI is working its magic. This may take a moment." });
 
     try {
         const result = await removeBackground({ photoDataUri: canvasItem.item.photoDataUri });
@@ -141,10 +141,10 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             photoDataUri: result.photoDataUri,
         };
         onItemUpdate(updatedItem);
-        toast({ title: "Background removed!" });
+        toast({ title: "Cutout created!" });
     } catch (error) {
-        console.error("Background removal failed:", error);
-        toast({ variant: "destructive", title: "Background removal failed", description: "The AI couldn't process this image. Please try another." });
+        console.error("Cutout creation failed:", error);
+        toast({ variant: "destructive", title: "Cutout creation failed", description: "The AI couldn't process this image. Please try another." });
     } finally {
         setProcessingItemId(null);
     }
@@ -355,12 +355,12 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                         className="absolute -top-3 -left-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
                         onClick={(e) => {
                             e.stopPropagation();
-                            handleRemoveBackground(canvasItem);
+                            handleCreateCutout(canvasItem);
                         }}
                         disabled={!!processingItemId}
-                        title="Remove background"
+                        title="Create cutout"
                     >
-                        {processingItemId === canvasItem.instanceId ? <Sparkles className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                        {processingItemId === canvasItem.instanceId ? <Sparkles className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
                     </Button>
                     <Button
                         variant="destructive"
