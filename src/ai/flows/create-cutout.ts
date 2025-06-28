@@ -35,16 +35,7 @@ const createCutoutFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         { media: { url: input.photoDataUri } },
-        { text: `
-          Your task is to act as an image processing service creating a magazine-style cutout.
-          1.  Identify the primary clothing object in the provided image.
-          2.  Create a precise segmentation mask for that object.
-          3.  Add a thick, irregular, solid white border around the segmentation mask to simulate a scissor-cut effect.
-          4.  Generate a new image containing ONLY the object and its white border.
-          5.  The output format MUST be a PNG image with a true alpha channel (RGBA).
-          6.  Every pixel that is NOT part of the bordered object must have an alpha value of 0, making it fully transparent.
-          7.  Do not add any colored background (black, white, or otherwise) outside the white border. The area outside the border MUST be transparent.
-        ` }
+        { text: `Analyze the image and identify the main subject. Create a perfect cutout of the subject. Add a thick, irregular white border around the subject to simulate a scissor cut. The output MUST be a PNG file. Everything outside the white border MUST be transparent. Every pixel outside the white border must have an alpha value of zero.` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
