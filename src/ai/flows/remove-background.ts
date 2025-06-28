@@ -36,12 +36,13 @@ const removeBackgroundFlow = ai.defineFlow(
       prompt: [
         { media: { url: input.photoDataUri } },
         { text: `
-          Analyze the image and identify the primary clothing object.
-          Your task is to segment this object perfectly from its background.
-          Generate a new image containing ONLY the segmented object.
-          The background of the new image MUST be 100% transparent.
-          The final output MUST be a PNG data URI with a valid alpha channel for transparency.
-          Do not add any solid background color. The background must be transparent.
+          Your task is to act as an image processing service.
+          1.  Identify the primary clothing object in the provided image.
+          2.  Create a precise segmentation mask for that object.
+          3.  Generate a new image where only the segmented object is visible.
+          4.  The output format MUST be a PNG image with a true alpha channel (RGBA).
+          5.  Every pixel that is NOT part of the segmented object must have an alpha value of 0, making it fully transparent.
+          6.  Do not add any colored background (black, white, or otherwise). The background MUST be transparent.
         ` }
       ],
       config: {
