@@ -336,14 +336,17 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             const hasAlteredImage = !!canvasItem.item.originalPhotoDataUri;
             const imageStyle: React.CSSProperties = { objectFit: 'cover' };
             if (canvasItem.item.maskDataUri) {
-                imageStyle.maskImage = `url(${canvasItem.item.maskDataUri})`;
-                imageStyle.WebkitMaskImage = `url(${canvasItem.item.maskDataUri})`;
-                imageStyle.maskSize = 'cover';
-                imageStyle.WebkitMaskSize = 'cover';
-                imageStyle.maskRepeat = 'no-repeat';
-                imageStyle.WebkitMaskRepeat = 'no-repeat';
-                imageStyle.maskPosition = 'center';
-                imageStyle.WebkitMaskPosition = 'center';
+                const style = imageStyle as any;
+                style.maskImage = `url(${canvasItem.item.maskDataUri})`;
+                style.maskMode = 'luminance';
+                style.maskSize = 'cover';
+                style.maskRepeat = 'no-repeat';
+                style.maskPosition = 'center';
+                style.WebkitMaskImage = `url(${canvasItem.item.maskDataUri})`;
+                style.WebkitMaskMode = 'luminance';
+                style.WebkitMaskSize = 'cover';
+                style.WebkitMaskRepeat = 'no-repeat';
+                style.WebkitMaskPosition = 'center';
             }
 
             return (

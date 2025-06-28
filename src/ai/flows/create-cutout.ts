@@ -35,7 +35,7 @@ const createCutoutFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         { media: { url: input.photoDataUri } },
-        { text: `Analyze the image and identify the main subject. Create a black and white mask. The mask must represent the subject with a thick, irregular white border around it, as if cut with scissors. The subject and its border must be solid white, and everything else must be solid black. The output MUST be a PNG file.` }
+        { text: `Your task is to create a "magazine cutout" style mask. Analyze the image to identify the main subject. Create a new black and white mask image. In this mask, the area of the subject, plus a thick, irregular "scissors-cut" border around it, must be pure solid white (#FFFFFF). Everything else, the entire background, must be pure solid black (#000000). The output MUST be a PNG file.` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
