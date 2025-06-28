@@ -79,38 +79,6 @@ export default function Home() {
     });
   };
 
-
-  const handleAddItemToCanvas = (item: ClothingItem, position: { x: number, y: number }) => {
-    const maxZIndex = Math.max(0, ...canvasItems.map(i => i.zIndex || 0));
-    const newCanvasItem: CanvasItem = {
-      instanceId: `${item.id}-${Date.now()}`,
-      item,
-      x: position.x - 100, // Center the drop on cursor
-      y: position.y - 100,
-      width: 200,
-      height: 200,
-      zIndex: maxZIndex + 1,
-    };
-    setCanvasItems(prev => [...prev, newCanvasItem]);
-  };
-
-  const handleRemoveItemFromCanvas = (instanceId: string) => {
-    setCanvasItems(prev => prev.filter(i => i.instanceId !== instanceId));
-  };
-  
-  const handleUpdateCanvasItem = (instanceId: string, updates: Partial<CanvasItem>) => {
-    setCanvasItems(prev => prev.map(i => i.instanceId === instanceId ? { ...i, ...updates } : i));
-  };
-  
-  const handleBringToFront = (instanceId: string) => {
-    const maxZIndex = Math.max(0, ...canvasItems.map(item => item.zIndex || 0));
-    setCanvasItems(prev => prev.map(item => item.instanceId === instanceId ? { ...item, zIndex: maxZIndex + 1 } : item));
-  };
-
-  const handleClearCanvas = () => {
-    setCanvasItems([]);
-  };
-
   const handleSaveOutfit = () => {
     if (canvasItems.length === 0) {
       toast({
@@ -220,11 +188,7 @@ export default function Home() {
         />
         <OutfitCanvas
           items={canvasItems}
-          onDrop={handleAddItemToCanvas}
-          onRemoveItem={handleRemoveItemFromCanvas}
-          onUpdateItem={handleUpdateCanvasItem}
-          onBringToFront={handleBringToFront}
-          onClear={handleClearCanvas}
+          setItems={setCanvasItems}
           onSave={handleSaveOutfit}
         />
       </main>

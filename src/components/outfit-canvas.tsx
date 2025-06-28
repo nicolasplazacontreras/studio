@@ -16,23 +16,32 @@ import { Rnd } from 'react-rnd';
 
 interface OutfitCanvasProps {
   items: CanvasItem[];
-  onDrop: (item: ClothingItem, position: { x: number, y: number }) => void;
-  onRemoveItem: (instanceId: string) => void;
-  onUpdateItem: (instanceId: string, updates: Partial<CanvasItem>) => void;
-  onBringToFront: (instanceId: string) => void;
-  onClear: () => void;
+  setItems: (items: CanvasItem[]) => void;
   onSave: () => void;
 }
 
-export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem, onBringToFront, onClear, onSave }: OutfitCanvasProps) {
+const checkIntersection = (rect1: DOMRect, rect2: DOMRect) => {
+  return !(rect2.left > rect1.right || 
+           rect2.right < rect1.left || 
+           rect2.top > rect1.bottom || 
+           rect2.bottom < rect1.top);
+};
+
+export default function OutfitCanvas({ items, setItems, onSave }: OutfitCanvasProps) {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<{[key: string]: HTMLDivElement}>({});
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
   const [isOver, setIsOver] = useState(false);
+
+  // New state for multi-select
+  const [selectedInstanceIds, setSelectedInstanceIds] = useState<string[]>([]);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionBox, setSelectionBox] = useState<{ x: number, y: number, width: number, height: number, startX: number, startY: number } | null>(null);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -45,7 +54,17 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
     const x = e.clientX - canvasRect.left;
     const y = e.clientY - canvasRect.top;
     
-    onDrop(item, { x, y });
+    const maxZIndex = Math.max(0, ...items.map(i => i.zIndex || 0));
+    const newCanvasItem: CanvasItem = {
+      instanceId: `${item.id}-${Date.now()}`,
+      item,
+      x: x - 100, // Center the drop on cursor
+      y: y - 100,
+      width: 200,
+      height: 200,
+      zIndex: maxZIndex + 1,
+    };
+    setItems([...items, newCanvasItem]);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -59,45 +78,21 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
   };
 
   const handleSimpleDownload = async () => {
-    if (!canvasRef.current) {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not find the canvas to export.",
-        });
-        return;
-    }
+    if (!canvasRef.current) return;
     if (items.length === 0) {
-        toast({
-            variant: "destructive",
-            title: "Canvas is empty",
-            description: "Add some items to the canvas to download an outfit.",
-        });
+        toast({ variant: "destructive", title: "Canvas is empty" });
         return;
     }
-
     setIsExporting(true);
     toast({ title: "Preparing your image..." });
-
     try {
         const dataUrl = await toJpeg(canvasRef.current, { quality: 0.95, style: { background: 'white' } });
         const link = document.createElement('a');
         link.href = dataUrl;
         link.download = `wrdrobe-outfit-canvas-${Date.now()}.jpg`;
-        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-        toast({
-            title: "Download started!",
-            description: "Your outfit image is being downloaded.",
-        });
     } catch (error) {
-        console.error("Simple download failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Export Failed",
-            description: "Could not export the canvas image. Please try again.",
-        });
+        toast({ variant: "destructive", title: "Export Failed" });
     } finally {
         setIsExporting(false);
     }
@@ -105,56 +100,110 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
 
   const handleDownload = async () => {
     if (items.length === 0) {
-        toast({
-            variant: "destructive",
-            title: "Canvas is empty",
-            description: "Add some items to the canvas to download an outfit.",
-        });
+        toast({ variant: "destructive", title: "Canvas is empty" });
         return;
     }
-
     setIsDownloading(true);
-    toast({
-        title: "Generating your outfit image...",
-        description: "This might take a moment.",
-    });
-
+    toast({ title: "Generating your outfit image..." });
     try {
-        const outfitItems = items.map(canvasItem => ({
-            photoDataUri: canvasItem.item.photoDataUri,
-            category: canvasItem.item.category,
-        }));
-
         const result = await generateOutfitImage({
-            items: outfitItems,
+            items: items.map(canvasItem => ({
+                photoDataUri: canvasItem.item.photoDataUri,
+                category: canvasItem.item.category,
+            })),
             aspectRatio: aspectRatio,
         });
-
         const link = document.createElement('a');
         link.href = result.photoDataUri;
         link.download = `wrdrobe-outfit-${Date.now()}.png`;
-        document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-        
         setIsDownloadDialogOpen(false);
-        toast({
-            title: "Download started!",
-            description: "Your outfit image is being downloaded.",
-        });
-
+        toast({ title: "Download started!" });
     } catch (error) {
-        console.error("Download failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Download Failed",
-            description: "Could not generate the outfit image. Please try again.",
-        });
+        toast({ variant: "destructive", title: "Download Failed" });
     } finally {
         setIsDownloading(false);
     }
   };
 
+  const handleMouseDownOnCanvas = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target !== canvasRef.current) return;
+    e.preventDefault();
+    
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const startX = e.clientX - canvasRect.left;
+    const startY = e.clientY - canvasRect.top;
+
+    setIsSelecting(true);
+    setSelectionBox({ x: startX, y: startY, width: 0, height: 0, startX, startY });
+    setSelectedInstanceIds([]);
+  };
+
+  const handleMouseMoveOnCanvas = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!isSelecting || !selectionBox) return;
+      e.preventDefault();
+
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const currentX = e.clientX - canvasRect.left;
+      const currentY = e.clientY - canvasRect.top;
+      
+      const newWidth = currentX - selectionBox.startX;
+      const newHeight = currentY - selectionBox.startY;
+
+      setSelectionBox({
+          ...selectionBox,
+          x: newWidth > 0 ? selectionBox.startX : currentX,
+          y: newHeight > 0 ? selectionBox.startY : currentY,
+          width: Math.abs(newWidth),
+          height: Math.abs(newHeight),
+      });
+  };
+
+  const handleMouseUpOnCanvas = () => {
+      if (isSelecting && selectionBox && canvasRef.current) {
+          const selectionRect = {
+              left: selectionBox.x,
+              top: selectionBox.y,
+              right: selectionBox.x + selectionBox.width,
+              bottom: selectionBox.y + selectionBox.height,
+              width: selectionBox.width,
+              height: selectionBox.height
+          } as DOMRect;
+          
+          const newSelectedIds = items.filter(item => {
+              const itemDiv = itemRefs.current[item.instanceId];
+              if (!itemDiv) return false;
+              const itemRect = itemDiv.getBoundingClientRect();
+              const canvasRect = canvasRef.current!.getBoundingClientRect();
+              
+              const relativeItemRect = {
+                left: itemRect.left - canvasRect.left,
+                top: itemRect.top - canvasRect.top,
+                right: itemRect.right - canvasRect.left,
+                bottom: itemRect.bottom - canvasRect.top,
+              } as DOMRect;
+
+              return checkIntersection(selectionRect, relativeItemRect);
+          }).map(item => item.instanceId);
+
+          setSelectedInstanceIds(newSelectedIds);
+      }
+      setIsSelecting(false);
+      setSelectionBox(null);
+  };
+  
+  const handleItemMouseDown = (e: React.MouseEvent, instanceId: string) => {
+    e.stopPropagation();
+    const isSelected = selectedInstanceIds.includes(instanceId);
+    if (e.shiftKey) {
+        setSelectedInstanceIds(prev => isSelected ? prev.filter(id => id !== instanceId) : [...prev, instanceId]);
+    } else if (!isSelected) {
+        setSelectedInstanceIds([instanceId]);
+    }
+    const maxZIndex = Math.max(0, ...items.map(i => i.zIndex || 0));
+    setItems(items.map(item => item.instanceId === instanceId ? { ...item, zIndex: maxZIndex + 1 } : item));
+  };
+  
   return (
     <div className="flex flex-1 flex-col bg-muted/30 p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
@@ -207,18 +256,11 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
                     </RadioGroup>
                 </div>
                 <Button onClick={handleDownload} disabled={isDownloading}>
-                    {isDownloading ? (
-                        <>
-                            <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                            Generating...
-                        </>
-                    ) : (
-                        "Confirm Download"
-                    )}
+                    {isDownloading ? <><Sparkles className="mr-2 h-4 w-4 animate-spin" />Generating...</> : "Confirm Download"}
                 </Button>
             </DialogContent>
           </Dialog>
-          <Button variant="destructive" size="sm" onClick={onClear}>
+          <Button variant="destructive" size="sm" onClick={() => setItems([])}>
             <Trash2 className="mr-2 h-4 w-4" />
             Clear
           </Button>
@@ -230,7 +272,21 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
+        onMouseDown={handleMouseDownOnCanvas}
+        onMouseMove={handleMouseMoveOnCanvas}
+        onMouseUp={handleMouseUpOnCanvas}
       >
+        {selectionBox && (
+          <div
+            className="absolute border-2 border-dashed border-primary bg-primary/20 pointer-events-none"
+            style={{
+              left: selectionBox.x,
+              top: selectionBox.y,
+              width: selectionBox.width,
+              height: selectionBox.height,
+            }}
+          />
+        )}
         {items.map(canvasItem => (
             <Rnd
                 key={canvasItem.instanceId}
@@ -239,21 +295,30 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
                 style={{ zIndex: canvasItem.zIndex }}
                 minWidth={50}
                 minHeight={50}
-                onDragStop={(e, d) => {
-                    onUpdateItem(canvasItem.instanceId, { x: d.x, y: d.y });
+                onMouseDown={(e) => handleItemMouseDown(e, canvasItem.instanceId)}
+                onDrag={(e, data) => {
+                    const { deltaX, deltaY } = data;
+                    setItems(currentItems => currentItems.map(item => 
+                        selectedInstanceIds.includes(item.instanceId)
+                            ? { ...item, x: item.x + deltaX, y: item.y + deltaY }
+                            : item
+                    ));
                 }}
                 onResizeStop={(e, direction, ref, delta, position) => {
-                    onUpdateItem(canvasItem.instanceId, {
+                    setItems(items.map(i => i.instanceId === canvasItem.instanceId ? {
+                        ...i,
                         width: ref.offsetWidth,
                         height: ref.offsetHeight,
                         ...position,
-                    });
+                    } : i));
                 }}
-                onMouseDown={() => onBringToFront(canvasItem.instanceId)}
                 bounds="parent"
                 className="group"
             >
-                <div className="w-full h-full relative border-2 border-transparent group-hover:border-primary group-hover:border-dashed rounded-md">
+                <div 
+                  className={`w-full h-full relative border-2 rounded-md transition-colors ${selectedInstanceIds.includes(canvasItem.instanceId) ? 'border-primary' : 'border-transparent group-hover:border-primary group-hover:border-dashed'}`}
+                  ref={el => { if(el) itemRefs.current[canvasItem.instanceId] = el}}
+                >
                     <Image
                         src={canvasItem.item.photoDataUri}
                         alt={canvasItem.item.name}
@@ -266,7 +331,7 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
                         className="absolute -top-3 -right-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
                         onClick={(e) => {
                             e.stopPropagation();
-                            onRemoveItem(canvasItem.instanceId)
+                            setItems(items.filter(i => i.instanceId !== canvasItem.instanceId));
                         }}
                     >
                         <X className="h-4 w-4" />
