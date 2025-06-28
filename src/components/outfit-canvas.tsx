@@ -323,7 +323,7 @@ export default function OutfitCanvas({ items, setItems, onSave }: OutfitCanvasPr
                         src={canvasItem.item.photoDataUri}
                         alt={canvasItem.item.name}
                         fill
-                        className="object-contain pointer-events-none"
+                        className="object-cover pointer-events-none"
                     />
                     <Button
                         variant="destructive"

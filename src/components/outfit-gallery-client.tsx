@@ -61,7 +61,7 @@ export default function OutfitGalleryClient() {
                     src={canvasItem.item.photoDataUri}
                     alt={canvasItem.item.name}
                     fill
-                    className="object-contain drop-shadow-md"
+                    className="object-cover drop-shadow-md"
                   />
                 </div>
               ))}
