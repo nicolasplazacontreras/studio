@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,6 +29,7 @@ export function EditClothingItemDialog({ isOpen, onOpenChange, item, onUpdateIte
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [tags, setTags] = useState('');
+  const [newPhotoDataUri, setNewPhotoDataUri] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -35,12 +37,31 @@ export function EditClothingItemDialog({ isOpen, onOpenChange, item, onUpdateIte
       setName(item.name);
       setCategory(item.category);
       setTags(item.tags?.join(', ') || '');
+      setNewPhotoDataUri(null); // Reset photo on item change
     }
   }, [item]);
 
   if (!item) {
     return null;
   }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.readAsDataURL(e.target.files[0]);
+      reader.onload = () => {
+        setNewPhotoDataUri(reader.result as string);
+      };
+      reader.onerror = (error) => {
+        console.error("Error reading file:", error);
+        toast({
+          variant: "destructive",
+          title: "File Read Error",
+          description: "There was an error processing your photo.",
+        });
+      };
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +79,10 @@ export function EditClothingItemDialog({ isOpen, onOpenChange, item, onUpdateIte
       name,
       category,
       tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      photoDataUri: newPhotoDataUri || item.photoDataUri,
+      // When a new photo is uploaded, it becomes the new original.
+      // This also clears any previous AI edits (cutout/background removal).
+      originalPhotoDataUri: newPhotoDataUri ? undefined : item.originalPhotoDataUri,
     });
     onOpenChange(false);
   };
@@ -68,10 +93,19 @@ export function EditClothingItemDialog({ isOpen, onOpenChange, item, onUpdateIte
         <DialogHeader>
           <DialogTitle>Edit Clothing Item</DialogTitle>
           <DialogDescription>
-            Update the details for your item.
+            Update the details for your item. You can also upload a new photo to replace the current one.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+            <div className="col-span-4 flex justify-center">
+                <Image 
+                    src={newPhotoDataUri || item.photoDataUri} 
+                    alt="Item preview" 
+                    width={96}
+                    height={96}
+                    className="h-24 w-24 object-cover rounded-md border"
+                />
+            </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="edit-name" className="text-right">Name</Label>
             <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" placeholder="e.g., Classic White Tee" />
@@ -92,6 +126,10 @@ export function EditClothingItemDialog({ isOpen, onOpenChange, item, onUpdateIte
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="edit-tags" className="text-right">Tags</Label>
             <Input id="edit-tags" value={tags} onChange={(e) => setTags(e.target.value)} className="col-span-3" placeholder="casual, summer, work (comma-separated)" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="edit-photo" className="text-right">New Photo</Label>
+            <Input id="edit-photo" type="file" onChange={handleFileChange} accept="image/*" className="col-span-3" />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
