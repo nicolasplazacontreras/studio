@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { type ClothingItem, type Outfit, type CanvasItems, type LayoutItem } from '@/lib/types';
+import { type ClothingItem, type Outfit, type CanvasItem } from '@/lib/types';
 import WardrobeSidebar from '@/components/wardrobe-sidebar';
 import OutfitCanvas from '@/components/outfit-canvas';
 import Header from '@/components/header';
@@ -21,24 +21,15 @@ const initialWardrobe: ClothingItem[] = [
   { id: '9', name: 'Leather Backpack', category: 'Bags', photoDataUri: 'https://placehold.co/400x400.png', tags: ['casual', 'work'], "data-ai-hint": "leather backpack" },
 ];
 
-const initialLayout: LayoutItem[] = [
-    { id: 'hats', category: 'Hats', x: 350, y: 10, width: 200, height: 160, zIndex: 1 },
-    { id: 'tops', category: 'Tops', x: 275, y: 175, width: 350, height: 250, zIndex: 2 },
-    { id: 'accessories', category: 'Accessories', x: 50, y: 175, width: 200, height: 200, zIndex: 3 },
-    { id: 'bottoms', category: 'Bottoms', x: 275, y: 430, width: 350, height: 250, zIndex: 2 },
-    { id: 'bags', category: 'Bags', x: 650, y: 300, width: 200, height: 200, zIndex: 3 },
-    { id: 'shoes', category: 'Shoes', x: 350, y: 685, width: 200, height: 160, zIndex: 1 },
-];
 const initialCategories = ['Hats', 'Tops', 'Bottoms', 'Shoes', 'Accessories', 'Bags'];
 
 export default function Home() {
   const [wardrobe, setWardrobe] = useState<ClothingItem[]>([]);
-  const [canvasItems, setCanvasItems] = useState<CanvasItems>({});
+  const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
   const [aiSuggestions, setAiSuggestions] = useState<SuggestOutfitOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   
-  const [layout, setLayout] = useState<LayoutItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
 
   const { toast } = useToast();
@@ -47,19 +38,6 @@ export default function Home() {
     // Load data from localStorage
     const savedWardrobe = localStorage.getItem('wrdrobe_wardrobe');
     setWardrobe(savedWardrobe ? JSON.parse(savedWardrobe) : initialWardrobe);
-
-    const savedLayoutRaw = localStorage.getItem('wrdrobe_layout');
-    if (savedLayoutRaw) {
-        const savedLayout = JSON.parse(savedLayoutRaw);
-        // Check if layout is in the new format (with x, y), otherwise reset to default
-        if (savedLayout.length > 0 && savedLayout[0].x !== undefined) {
-            setLayout(savedLayout);
-        } else {
-            setLayout(initialLayout);
-        }
-    } else {
-        setLayout(initialLayout);
-    }
     
     const savedCategories = localStorage.getItem('wrdrobe_categories');
     setCategories(savedCategories ? JSON.parse(savedCategories) : initialCategories);
@@ -71,10 +49,6 @@ export default function Home() {
   }, [wardrobe]);
 
   useEffect(() => {
-    if(layout.length > 0) localStorage.setItem('wrdrobe_layout', JSON.stringify(layout));
-  }, [layout]);
-
-  useEffect(() => {
     if(categories.length > 0) localStorage.setItem('wrdrobe_categories', JSON.stringify(categories));
   }, [categories]);
 
@@ -82,6 +56,11 @@ export default function Home() {
   const handleAddItem = (item: Omit<ClothingItem, 'id'>) => {
     const newItem = { ...item, id: Date.now().toString() };
     setWardrobe(prev => [...prev, newItem]);
+    
+    if (!categories.includes(newItem.category)) {
+      setCategories(prev => [...prev, newItem.category]);
+    }
+
     toast({
       title: "Item Added",
       description: `${newItem.name} has been added to your wardrobe.`,
@@ -89,21 +68,11 @@ export default function Home() {
   };
 
   const handleUpdateItem = (updatedItem: ClothingItem) => {
-    const oldItem = wardrobe.find(item => item.id === updatedItem.id);
-    
     setWardrobe(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
-
-    // If the edited item is on the canvas, we need to handle it
-    if(oldItem && canvasItems[oldItem.category]?.id === updatedItem.id) {
-      if(oldItem.category === updatedItem.category) {
-        // Category is the same, just update the item on the canvas
-        setCanvasItems(prev => ({...prev, [updatedItem.category]: updatedItem}));
-      } else {
-        // Category changed, remove it from its old spot on the canvas
-        handleRemoveFromCanvas(oldItem.category);
-      }
-    }
-    
+    // Update all instances of this item on the canvas
+    setCanvasItems(prev => prev.map(cItem => 
+      cItem.item.id === updatedItem.id ? { ...cItem, item: updatedItem } : cItem
+    ));
     toast({
       title: "Item Updated",
       description: `${updatedItem.name} has been updated successfully.`,
@@ -111,24 +80,39 @@ export default function Home() {
   };
 
 
-  const handleDropOnCanvas = (item: ClothingItem) => {
-    setCanvasItems(prev => ({ ...prev, [item.category]: item }));
+  const handleAddItemToCanvas = (item: ClothingItem, position: { x: number, y: number }) => {
+    const maxZIndex = Math.max(0, ...canvasItems.map(i => i.zIndex || 0));
+    const newCanvasItem: CanvasItem = {
+      instanceId: `${item.id}-${Date.now()}`,
+      item,
+      x: position.x - 100, // Center the drop on cursor
+      y: position.y - 100,
+      width: 200,
+      height: 200,
+      zIndex: maxZIndex + 1,
+    };
+    setCanvasItems(prev => [...prev, newCanvasItem]);
   };
 
-  const handleRemoveFromCanvas = (category: keyof CanvasItems) => {
-    setCanvasItems(prev => {
-      const newItems = { ...prev };
-      delete newItems[category];
-      return newItems;
-    });
+  const handleRemoveItemFromCanvas = (instanceId: string) => {
+    setCanvasItems(prev => prev.filter(i => i.instanceId !== instanceId));
+  };
+  
+  const handleUpdateCanvasItem = (instanceId: string, updates: Partial<CanvasItem>) => {
+    setCanvasItems(prev => prev.map(i => i.instanceId === instanceId ? { ...i, ...updates } : i));
+  };
+  
+  const handleBringToFront = (instanceId: string) => {
+    const maxZIndex = Math.max(0, ...canvasItems.map(item => item.zIndex || 0));
+    setCanvasItems(prev => prev.map(item => item.instanceId === instanceId ? { ...item, zIndex: maxZIndex + 1 } : item));
   };
 
   const handleClearCanvas = () => {
-    setCanvasItems({});
+    setCanvasItems([]);
   };
 
   const handleSaveOutfit = () => {
-    if (Object.keys(canvasItems).length === 0) {
+    if (canvasItems.length === 0) {
       toast({
         variant: "destructive",
         title: "Empty Outfit",
@@ -146,16 +130,13 @@ export default function Home() {
   };
   
   const handleDeleteItem = (itemId: string) => {
+    // Remove from wardrobe
     setWardrobe(prev => prev.filter(item => item.id !== itemId));
-    // Also remove from canvas if it's there
-    Object.entries(canvasItems).forEach(([category, item]) => {
-        if (item && item.id === itemId) {
-            handleRemoveFromCanvas(category as keyof CanvasItems);
-        }
-    });
+    // Also remove all instances from canvas
+    setCanvasItems(prev => prev.filter(cItem => cItem.item.id !== itemId));
     toast({
       title: "Item Deleted",
-      description: "The item has been removed from your wardrobe.",
+      description: "The item has been removed from your wardrobe and canvas.",
     });
   };
 
@@ -194,66 +175,33 @@ export default function Home() {
   };
 
   const handleUseSuggestedOutfit = (suggestedItems: {name: string, category: string, photoDataUri: string}[]) => {
-    const newCanvasItems: CanvasItems = {};
-    suggestedItems.forEach(suggestedItem => {
+    let currentX = 50;
+    let currentY = 50;
+    const maxZIndex = Math.max(0, ...canvasItems.map(i => i.zIndex || 0));
+    
+    const newCanvasItems: CanvasItem[] = suggestedItems.map((suggestedItem, index) => {
         const wardrobeItem = wardrobe.find(item => item.name === suggestedItem.name && item.photoDataUri === suggestedItem.photoDataUri);
-        if (wardrobeItem) {
-            newCanvasItems[wardrobeItem.category as keyof CanvasItems] = wardrobeItem;
-        }
-    });
+        if (!wardrobeItem) return null;
+
+        const canvasItem: CanvasItem = {
+            instanceId: `${wardrobeItem.id}-${Date.now()}-${index}`,
+            item: wardrobeItem,
+            x: currentX,
+            y: currentY,
+            width: 250,
+            height: 250,
+            zIndex: maxZIndex + index + 1
+        };
+        currentX += 75;
+        currentY += 75;
+        return canvasItem;
+    }).filter((item): item is CanvasItem => item !== null);
+
     setCanvasItems(newCanvasItems);
     setIsAiDialogOpen(false);
     toast({
         title: 'Outfit Applied',
         description: 'The suggested outfit is now on your canvas.',
-    });
-  };
-
-  const handleAddDropZone = (category: string) => {
-    if (layout.map(l => l.category).includes(category)) {
-      toast({ variant: 'destructive', title: 'Category already on canvas' });
-      return;
-    }
-
-    const maxZIndex = Math.max(0, ...layout.map(l => l.zIndex || 0));
-
-    const newZone: LayoutItem = {
-        id: Date.now().toString(),
-        category,
-        x: 10,
-        y: 10,
-        width: 200,
-        height: 200,
-        zIndex: maxZIndex + 1,
-    };
-    
-    if (!categories.includes(category)) {
-      setCategories(prev => [...prev, category]);
-    }
-
-    setLayout(prev => [...prev, newZone]);
-    toast({ title: 'Drop Zone Added', description: `Category "${category}" is now on the canvas.` });
-  };
-
-  const handleRemoveDropZone = (zoneId: string) => {
-    const zoneToRemove = layout.find(z => z.id === zoneId);
-    if (!zoneToRemove) return;
-
-    // Remove any item that was in the zone
-    handleRemoveFromCanvas(zoneToRemove.category);
-
-    setLayout(prev => prev.filter(z => z.id !== zoneId));
-    toast({ title: 'Drop Zone Removed', description: `Category "${zoneToRemove.category}" removed from canvas.` });
-  };
-
-  const handleUpdateLayout = (id: string, updates: { x: number; y: number; width: number; height: number; }) => {
-    setLayout(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
-  };
-
-  const handleBringToFront = (id: string) => {
-    setLayout(prev => {
-        const maxZIndex = Math.max(0, ...prev.map(item => item.zIndex || 0));
-        return prev.map(item => item.id === id ? { ...item, zIndex: maxZIndex + 1 } : item);
     });
   };
 
@@ -272,16 +220,12 @@ export default function Home() {
         />
         <OutfitCanvas
           items={canvasItems}
-          layout={layout}
-          onUpdateLayout={handleUpdateLayout}
+          onDrop={handleAddItemToCanvas}
+          onRemoveItem={handleRemoveItemFromCanvas}
+          onUpdateItem={handleUpdateCanvasItem}
           onBringToFront={handleBringToFront}
-          onDrop={handleDropOnCanvas}
-          onRemoveItem={handleRemoveFromCanvas}
           onClear={handleClearCanvas}
           onSave={handleSaveOutfit}
-          onAddZone={handleAddDropZone}
-          onRemoveZone={handleRemoveDropZone}
-          allCategories={categories}
         />
       </main>
       {aiSuggestions && (

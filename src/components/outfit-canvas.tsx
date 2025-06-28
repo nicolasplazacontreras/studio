@@ -2,135 +2,28 @@
 
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
-import { type ClothingItem, type CanvasItems, type LayoutItem } from '@/lib/types';
+import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus, Sparkles, HardDriveDownload, RefreshCw } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { AddDropZoneDialog } from './add-dropzone-dialog';
 import { generateOutfitImage } from '@/ai/flows/generate-outfit-image';
 import { toJpeg } from 'html-to-image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Rnd } from 'react-rnd';
 import { TransformWrapper, TransformComponent, useControls, type ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
 
-
 interface OutfitCanvasProps {
-  items: CanvasItems;
-  layout: LayoutItem[];
-  onUpdateLayout: (id: string, updates: { x: number, y: number, width: number, height: number }) => void;
-  onBringToFront: (id: string) => void;
-  onDrop: (item: ClothingItem) => void;
-  onRemoveItem: (category: keyof CanvasItems) => void;
+  items: CanvasItem[];
+  onDrop: (item: ClothingItem, position: { x: number, y: number }) => void;
+  onRemoveItem: (instanceId: string) => void;
+  onUpdateItem: (instanceId: string, updates: Partial<CanvasItem>) => void;
+  onBringToFront: (instanceId: string) => void;
   onClear: () => void;
   onSave: () => void;
-  onAddZone: (category: string) => void;
-  onRemoveZone: (zoneId: string) => void;
-  allCategories: string[];
 }
-
-const HatIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M12 2a5 5 0 0 0-5 5v1h10V7a5 5 0 0 0-5-5Z"/>
-    <path d="M12 8H2.5A1.5 1.5 0 0 0 1 9.5V11h22V9.5A1.5 1.5 0 0 0 21.5 8H12Z"/>
-  </svg>
-);
-
-const PantsIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M9 2v10H6v10h5" />
-    <path d="M15 2v10h3v10h-5" />
-    <path d="M9 2h6" />
-  </svg>
-);
-
-const categoryIcons: Record<string, React.ReactNode> = {
-  Hats: <HatIcon className="mx-auto h-8 w-8 mb-2" />,
-  Tops: <Shirt className="mx-auto h-8 w-8 mb-2" />,
-  Bottoms: <PantsIcon className="mx-auto h-8 w-8 mb-2" />,
-  Shoes: <Footprints className="mx-auto h-8 w-8 mb-2" />,
-  Accessories: <Gem className="mx-auto h-8 w-8 mb-2" />,
-  Bags: <ShoppingBag className="mx-auto h-8 w-8 mb-2" />,
-};
-
-const DropZoneContent = ({ 
-    item, category, onDrop, onRemoveItem, isEditing, onRemoveZone
-}: {
-  item?: ClothingItem;
-  category: string;
-  onDrop: (e: React.DragEvent<HTMLDivElement>, category: string) => void;
-  onRemoveItem: (category: string) => void;
-  isEditing: boolean;
-  onRemoveZone: () => void;
-}) => {
-    const [isOver, setIsOver] = useState(false);
-    const Icon = categoryIcons[category] || <Shirt className="mx-auto h-8 w-8 mb-2" />;
-
-    return (
-        <div
-            onDrop={(e) => {
-                setIsOver(false);
-                if (!isEditing) onDrop(e, category);
-            }}
-            onDragOver={(e) => {
-                e.preventDefault();
-                const clothingItem = e.dataTransfer.types.includes('application/json');
-                if (!isEditing && clothingItem) {
-                    setIsOver(true);
-                    e.dataTransfer.dropEffect = 'copy';
-                } else {
-                    e.dataTransfer.dropEffect = 'none';
-                }
-            }}
-            onDragLeave={() => setIsOver(false)}
-            className={`w-full h-full flex items-center justify-center transition-all rounded-lg overflow-hidden
-                ${isEditing ? 'cursor-move' : ''}
-                ${isOver && !item ? 'bg-accent' : ''}
-                ${item && !isEditing ? 'p-0' : 'p-4'}
-            `}
-        >
-            {isEditing ? (
-                <>
-                    <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 z-20" onClick={onRemoveZone}>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <div className="text-center text-muted-foreground pointer-events-none">
-                        {Icon}
-                        <p className='truncate'>{category}</p>
-                    </div>
-                </>
-            ) : item ? (
-                <div className="group relative w-full h-full">
-                    <Image
-                        src={item.photoDataUri}
-                        alt={item.name}
-                        fill
-                        className="object-contain"
-                    />
-                    <div className="absolute inset-0 bg-black/10 rounded-md" />
-                    <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        onClick={() => onRemoveItem(category)}
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
-                    <p className="absolute bottom-2 left-2 text-sm font-medium text-white drop-shadow-md z-10 bg-black/30 px-2 py-1 rounded">
-                        {item.name}
-                    </p>
-                </div>
-            ) : (
-                <div className="text-center text-muted-foreground pointer-events-none">
-                    {Icon}
-                    <p className='truncate'>{category}</p>
-                </div>
-            )}
-        </div>
-    );
-};
 
 const CanvasViewControls = () => {
     const { resetTransform } = useControls();
@@ -142,23 +35,24 @@ const CanvasViewControls = () => {
     )
 }
 
-export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToFront, onDrop, onRemoveItem, onClear, onSave, onAddZone, onRemoveZone, allCategories }: OutfitCanvasProps) {
+export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem, onBringToFront, onClear, onSave }: OutfitCanvasProps) {
   const { toast } = useToast();
-  const [isEditing, setIsEditing] = useState(false);
-  
   const canvasRef = useRef<HTMLDivElement>(null);
+  const transformRef = useRef<ReactZoomPanPinchRef>(null);
+
   const [isDownloading, setIsDownloading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isOver, setIsOver] = useState(false);
 
   const handleWheel = (ref: ReactZoomPanPinchRef, event: WheelEvent): boolean => {
-    if (isEditing) {
-      return true; // Disable all wheel actions when editing
-    }
     if (event.altKey) {
       return false; // Let the library handle zoom when Alt is pressed
     }
+    // Disable panning if we're dragging an RND component
+    if (isDragging) return true;
     
     // Custom panning behavior
     ref.pan({
@@ -171,20 +65,20 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
     return true; // Stop the library from performing its default (zoom) action
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetCategory: string) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setIsOver(false);
     const itemData = e.dataTransfer.getData('application/json');
-    if (itemData) {
+    const transformState = transformRef.current?.state;
+    const canvasRect = e.currentTarget.getBoundingClientRect();
+    
+    if (itemData && transformState && canvasRect) {
       const item: ClothingItem = JSON.parse(itemData);
-      if (item.category === targetCategory) {
-        onDrop(item);
-      } else {
-        toast({
-            variant: 'destructive',
-            title: 'Wrong Category',
-            description: `This item belongs in ${item.category}, not ${targetCategory}.`,
-        });
-      }
+      
+      const x = (e.clientX - canvasRect.left - transformState.positionX) / transformState.scale;
+      const y = (e.clientY - canvasRect.top - transformState.positionY) / transformState.scale;
+      
+      onDrop(item, { x, y });
     }
   };
 
@@ -197,7 +91,7 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
         });
         return;
     }
-    if (Object.values(items).every(item => !item)) {
+    if (items.length === 0) {
         toast({
             variant: "destructive",
             title: "Canvas is empty",
@@ -234,7 +128,7 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
   };
 
   const handleDownload = async () => {
-    if (Object.values(items).every(item => !item)) {
+    if (items.length === 0) {
         toast({
             variant: "destructive",
             title: "Canvas is empty",
@@ -250,12 +144,10 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
     });
 
     try {
-        const outfitItems = Object.values(items)
-            .filter((item): item is ClothingItem => !!item)
-            .map(item => ({
-                photoDataUri: item.photoDataUri,
-                category: item.category,
-            }));
+        const outfitItems = items.map(canvasItem => ({
+            photoDataUri: canvasItem.item.photoDataUri,
+            category: canvasItem.item.category,
+        }));
 
         const result = await generateOutfitImage({
             items: outfitItems,
@@ -287,25 +179,19 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
     }
   };
 
-  const currentCategoriesOnCanvas = layout.map(l => l.category);
-
   return (
     <div className="flex flex-1 flex-col bg-muted/30 p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Outfit Canvas</h2>
         <div className="flex items-center gap-2">
-           <Button variant={isEditing ? 'default' : 'outline'} size="sm" onClick={() => setIsEditing(!isEditing)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            {isEditing ? 'Done' : 'Edit Layout'}
-          </Button>
-          <Button variant="outline" size="sm" onClick={onSave} disabled={isEditing}>
+           <Button variant="outline" size="sm" onClick={onSave}>
             <Save className="mr-2 h-4 w-4" />
             Save
           </Button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={isEditing}>
+                <Button variant="outline" size="sm">
                     <Download className="mr-2 h-4 w-4" />
                     Download
                 </Button>
@@ -356,7 +242,7 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
                 </Button>
             </DialogContent>
           </Dialog>
-          <Button variant="destructive" size="sm" onClick={onClear} disabled={isEditing}>
+          <Button variant="destructive" size="sm" onClick={onClear}>
             <Trash2 className="mr-2 h-4 w-4" />
             Clear
           </Button>
@@ -364,71 +250,81 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
       </div>
       <div className="flex-1 relative bg-background rounded-lg border overflow-hidden">
         <TransformWrapper
+          ref={transformRef}
           minScale={0.2}
           maxScale={4}
           initialScale={1}
           onWheel={handleWheel}
-          wheel={{ step: 0.2 }}
-          panning={{ disabled: isEditing }}
+          wheel={{ step: 0.2, disabled: isDragging }}
+          panning={{ disabled: isDragging }}
           doubleClick={{ disabled: true }}
           limitToBounds={false}
         >
             <CanvasViewControls />
             <TransformComponent
-                wrapperClass={`w-full h-full ${!isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                wrapperClass={`w-full h-full cursor-grab active:cursor-grabbing`}
             >
                 <div
                     ref={canvasRef}
-                    className="relative bg-muted/40"
-                    style={{ width: 950, height: 950 }}
+                    onDrop={handleDrop}
+                    onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsOver(true);
+                    }}
+                    onDragLeave={() => setIsOver(false)}
+                    className={`relative bg-muted/40 transition-colors ${isOver ? 'bg-accent' : ''}`}
+                    style={{ width: 1200, height: 1200 }}
                 >
-                    {layout.map(zone => (
+                    {items.map(canvasItem => (
                         <Rnd
-                            key={zone.id}
-                            size={{ width: zone.width, height: zone.height }}
-                            position={{ x: zone.x, y: zone.y }}
-                            style={{ zIndex: zone.zIndex }}
-                            minWidth={100}
-                            minHeight={100}
-                            disableDragging={!isEditing}
-                            enableResizing={ isEditing ? undefined : { top: false, right: false, bottom: false, left: false, topRight: false, bottomRight: false, bottomLeft: false, topLeft: false } }
-                            onDragStart={() => onBringToFront(zone.id)}
+                            key={canvasItem.instanceId}
+                            size={{ width: canvasItem.width, height: canvasItem.height }}
+                            position={{ x: canvasItem.x, y: canvasItem.y }}
+                            style={{ zIndex: canvasItem.zIndex }}
+                            minWidth={50}
+                            minHeight={50}
+                            onDragStart={() => setIsDragging(true)}
                             onDragStop={(e, d) => {
-                                onUpdateLayout(zone.id, { x: d.x, y: d.y, width: zone.width, height: zone.height });
+                                onUpdateItem(canvasItem.instanceId, { x: d.x, y: d.y });
+                                setIsDragging(false);
                             }}
+                            onResizeStart={() => setIsDragging(true)}
                             onResizeStop={(e, direction, ref, delta, position) => {
-                                onUpdateLayout(zone.id, {
+                                onUpdateItem(canvasItem.instanceId, {
                                     width: ref.offsetWidth,
                                     height: ref.offsetHeight,
-                                    x: position.x,
-                                    y: position.y,
+                                    ...position,
                                 });
+                                setIsDragging(false);
                             }}
+                            onMouseDown={() => onBringToFront(canvasItem.instanceId)}
                             bounds="parent"
-                            className={isEditing ? 'border-2 border-dashed border-primary bg-primary/10 rounded-lg' : ''}
+                            className="group"
                         >
-                          <DropZoneContent
-                              item={items[zone.category]}
-                              category={zone.category}
-                              onDrop={handleDrop}
-                              onRemoveItem={onRemoveItem}
-                              isEditing={isEditing}
-                              onRemoveZone={() => onRemoveZone(zone.id)}
-                          />
+                            <div className="w-full h-full relative border-2 border-transparent group-hover:border-primary group-hover:border-dashed rounded-md">
+                                <Image
+                                    src={canvasItem.item.photoDataUri}
+                                    alt={canvasItem.item.name}
+                                    fill
+                                    className="object-contain pointer-events-none"
+                                />
+                                <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute -top-3 -right-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRemoveItem(canvasItem.instanceId)
+                                    }}
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </Rnd>
                     ))}
-                    {isEditing && (
-                        <div className='absolute bottom-4 right-4 z-50'>
-                            <AddDropZoneDialog
-                                onAddZone={onAddZone}
-                                allCategories={allCategories}
-                                currentCategoriesOnCanvas={currentCategoriesOnCanvas}
-                            >
-                                <Button variant="outline" className='border-dashed'>
-                                    <Plus className="h-6 w-6 mr-2" />
-                                    Add Zone
-                                </Button>
-                            </AddDropZoneDialog>
+                     {items.length === 0 && !isOver && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <p className="text-muted-foreground text-lg">Drop clothing items here to start building your outfit!</p>
                         </div>
                     )}
                 </div>

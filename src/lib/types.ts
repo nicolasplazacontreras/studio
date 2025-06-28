@@ -7,21 +7,18 @@ export interface ClothingItem {
   "data-ai-hint"?: string;
 }
 
-export type CanvasItems = {
-  [category: string]: ClothingItem | undefined;
-};
+// A clothing item placed on the canvas
+export interface CanvasItem {
+  instanceId: string; // Unique ID for this specific instance on the canvas
+  item: ClothingItem; // The original clothing item data
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
+}
 
 export interface Outfit {
   id: string;
-  items: CanvasItems;
-}
-
-export interface LayoutItem {
-    id: string;
-    category: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    zIndex: number;
+  items: CanvasItem[]; // An outfit is a collection of items on the canvas
 }

@@ -8,23 +8,8 @@ import { Button } from "./ui/button";
 import { Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const getItemStyle = (category: string): React.CSSProperties => {
-    switch (category) {
-        case 'Tops':
-            return { top: '15%', left: 0, width: '100%', height: '60%' };
-        case 'Bottoms':
-            return { bottom: '20%', left: 0, width: '100%', height: '50%' };
-        case 'Shoes':
-            return { bottom: 0, left: '25%', width: '50%', height: '25%' };
-        case 'Hats':
-            return { top: 0, left: '25%', width: '50%', height: '20%' };
-        case 'Bags':
-            return { top: '50%', right: '5%', width: '30%', height: '30%', transform: 'translateY(-50%)' };
-        case 'Accessories':
-        default:
-            return { top: '20%', right: '5%', width: '30%', height: '30%' };
-    }
-}
+const CANVAS_WIDTH = 1200;
+const CANVAS_HEIGHT = 1200;
 
 export default function OutfitGalleryClient() {
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
@@ -58,18 +43,29 @@ export default function OutfitGalleryClient() {
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {savedOutfits.map((outfit) => (
         <Card key={outfit.id} className="group relative overflow-hidden">
-          <CardContent className="p-0 aspect-square relative bg-gray-100">
-            {Object.values(outfit.items).map((item) => (
-              <Image
-                key={item.id}
-                src={item.photoDataUri}
-                alt={item.name}
-                width={200}
-                height={200}
-                className="absolute object-contain drop-shadow-md"
-                style={getItemStyle(item.category)}
-              />
-            ))}
+          <CardContent className="p-0 aspect-square relative bg-gray-100 dark:bg-muted/40">
+            <div className="absolute w-full h-full">
+              {outfit.items.map((canvasItem) => (
+                <div
+                  key={canvasItem.instanceId}
+                  className="absolute"
+                  style={{
+                    left: `${(canvasItem.x / CANVAS_WIDTH) * 100}%`,
+                    top: `${(canvasItem.y / CANVAS_HEIGHT) * 100}%`,
+                    width: `${(canvasItem.width / CANVAS_WIDTH) * 100}%`,
+                    height: `${(canvasItem.height / CANVAS_HEIGHT) * 100}%`,
+                    zIndex: canvasItem.zIndex,
+                  }}
+                >
+                  <Image
+                    src={canvasItem.item.photoDataUri}
+                    alt={canvasItem.item.name}
+                    fill
+                    className="object-contain drop-shadow-md"
+                  />
+                </div>
+              ))}
+            </div>
           </CardContent>
           <Button
             size="icon"
