@@ -46,34 +46,38 @@ export default function OutfitGalleryClient() {
           <CardContent className="p-0 aspect-square relative bg-gray-100 dark:bg-muted/40">
             <div className="absolute w-full h-full">
               {outfit.items.map((canvasItem) => {
-                const itemStyle: React.CSSProperties = {
+                const containerStyle: React.CSSProperties = {
                   left: `${(canvasItem.x / CANVAS_WIDTH) * 100}%`,
                   top: `${(canvasItem.y / CANVAS_HEIGHT) * 100}%`,
                   width: `${(canvasItem.width / CANVAS_WIDTH) * 100}%`,
                   height: `${(canvasItem.height / CANVAS_HEIGHT) * 100}%`,
                   zIndex: canvasItem.zIndex,
                 };
+
+                const imageStyle: React.CSSProperties = { objectFit: 'cover' };
                 if (canvasItem.item.maskDataUri) {
-                    itemStyle.maskImage = `url(${canvasItem.item.maskDataUri})`;
-                    itemStyle.WebkitMaskImage = `url(${canvasItem.item.maskDataUri})`;
-                    itemStyle.maskSize = 'cover';
-                    itemStyle.WebkitMaskSize = 'cover';
-                    itemStyle.maskRepeat = 'no-repeat';
-                    itemStyle.WebkitMaskRepeat = 'no-repeat';
-                    itemStyle.maskPosition = 'center';
-                    itemStyle.WebkitMaskPosition = 'center';
+                    imageStyle.maskImage = `url(${canvasItem.item.maskDataUri})`;
+                    imageStyle.WebkitMaskImage = `url(${canvasItem.item.maskDataUri})`;
+                    imageStyle.maskSize = 'cover';
+                    imageStyle.WebkitMaskSize = 'cover';
+                    imageStyle.maskRepeat = 'no-repeat';
+                    imageStyle.WebkitMaskRepeat = 'no-repeat';
+                    imageStyle.maskPosition = 'center';
+                    imageStyle.WebkitMaskPosition = 'center';
                 }
+                
                 return (
                   <div
                     key={canvasItem.instanceId}
                     className="absolute"
-                    style={itemStyle}
+                    style={containerStyle}
                   >
                     <Image
                       src={canvasItem.item.photoDataUri}
                       alt={canvasItem.item.name}
                       fill
-                      className="object-cover drop-shadow-md"
+                      className="drop-shadow-md"
+                      style={imageStyle}
                     />
                   </div>
                 );
