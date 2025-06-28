@@ -35,11 +35,16 @@ const createCutoutFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         { media: { url: input.photoDataUri } },
-        { text: `You are an expert digital artist creating assets for a fashion collage. Your task is to transform the provided clothing item image into a magazine-style cutout.
-1. Perfectly isolate the main clothing item from its original background.
-2. Add a thick, slightly irregular white border around the isolated item, simulating a scissor-cut look.
-3. Create a new image where the area OUTSIDE the white border is 100% transparent (alpha channel = 0).
-4. The final output format MUST be a PNG image data URI to support transparency.` }
+        { text: `
+          Analyze the image and identify the primary clothing object.
+          Your task is to create a magazine-style cutout of this object.
+          1. Segment the object perfectly from its background.
+          2. Add a thick, irregular white border around the segmented object to simulate a scissor-cut effect.
+          3. Generate a new image containing ONLY the bordered object.
+          4. The area outside the white border MUST be 100% transparent.
+          5. The final output MUST be a PNG data URI with a valid alpha channel for transparency.
+          Do not add any solid background color outside the white border. It must be transparent.
+        ` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
