@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItems, type LayoutItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus, Sparkles, HardDriveDownload } from 'lucide-react';
+import { Download, Save, Shirt, Trash2, X, ShoppingBag, Gem, Footprints, Pencil, Plus, Sparkles, HardDriveDownload, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -14,6 +14,8 @@ import { generateOutfitImage } from '@/ai/flows/generate-outfit-image';
 import { toJpeg } from 'html-to-image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Rnd } from 'react-rnd';
+import { TransformWrapper, TransformComponent, useControls, type ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
+
 
 interface OutfitCanvasProps {
   items: CanvasItems;
@@ -130,6 +132,15 @@ const DropZoneContent = ({
     );
 };
 
+const CanvasViewControls = () => {
+    const { resetTransform } = useControls();
+    return (
+        <Button variant="outline" size="sm" className="absolute bottom-4 left-4 z-50 bg-background/80" onClick={() => resetTransform()}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Reset View
+        </Button>
+    )
+}
 
 export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToFront, onDrop, onRemoveItem, onClear, onSave, onAddZone, onRemoveZone, allCategories }: OutfitCanvasProps) {
   const { toast } = useToast();
@@ -140,6 +151,25 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
   const [isExporting, setIsExporting] = useState(false);
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
+
+  const handleWheel = (ref: ReactZoomPanPinchRef, event: WheelEvent): boolean => {
+    if (isEditing) {
+      return true; // Disable all wheel actions when editing
+    }
+    if (event.altKey) {
+      return false; // Let the library handle zoom when Alt is pressed
+    }
+    
+    // Custom panning behavior
+    ref.pan({
+      x: -event.deltaX,
+      y: -event.deltaY,
+      animationTime: 80,
+      animationType: 'easeOut'
+    });
+    
+    return true; // Stop the library from performing its default (zoom) action
+  };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetCategory: string) => {
     e.preventDefault();
@@ -332,56 +362,75 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
           </Button>
         </div>
       </div>
-      <div ref={canvasRef} className="flex-1 relative bg-muted/40 rounded-lg border overflow-hidden">
-        {layout.map(zone => (
-            <Rnd
-                key={zone.id}
-                size={{ width: zone.width, height: zone.height }}
-                position={{ x: zone.x, y: zone.y }}
-                style={{ zIndex: zone.zIndex }}
-                minWidth={100}
-                minHeight={100}
-                disableDragging={!isEditing}
-                enableResizing={ isEditing ? undefined : { top: false, right: false, bottom: false, left: false, topRight: false, bottomRight: false, bottomLeft: false, topLeft: false } }
-                onDragStart={() => onBringToFront(zone.id)}
-                onDragStop={(e, d) => {
-                    onUpdateLayout(zone.id, { x: d.x, y: d.y, width: zone.width, height: zone.height });
-                }}
-                onResizeStop={(e, direction, ref, delta, position) => {
-                    onUpdateLayout(zone.id, {
-                        width: ref.offsetWidth,
-                        height: ref.offsetHeight,
-                        x: position.x,
-                        y: position.y,
-                    });
-                }}
-                bounds="parent"
-                className={isEditing ? 'border-2 border-dashed border-primary bg-primary/10 rounded-lg' : ''}
+      <div className="flex-1 relative bg-background rounded-lg border overflow-hidden">
+        <TransformWrapper
+          minScale={0.2}
+          maxScale={4}
+          initialScale={1}
+          onWheel={handleWheel}
+          wheel={{ step: 0.2 }}
+          panning={{ disabled: isEditing }}
+          doubleClick={{ disabled: true }}
+          limitToBounds={false}
+        >
+            <CanvasViewControls />
+            <TransformComponent
+                wrapperClass={!isEditing ? 'cursor-grab active:cursor-grabbing' : ''}
+                contentClass="w-full h-full"
             >
-              <DropZoneContent
-                  item={items[zone.category]}
-                  category={zone.category}
-                  onDrop={handleDrop}
-                  onRemoveItem={onRemoveItem}
-                  isEditing={isEditing}
-                  onRemoveZone={() => onRemoveZone(zone.id)}
-              />
-            </Rnd>
-        ))}
-         {isEditing && (
-            <div className='absolute bottom-4 right-4 z-50'>
-                <AddDropZoneDialog
-                    onAddZone={onAddZone}
-                    allCategories={allCategories}
-                    currentCategoriesOnCanvas={currentCategoriesOnCanvas}
-                >
-                    <Button variant="outline" className='border-dashed'>
-                        <Plus className="h-6 w-6 mr-2" />
-                        Add Zone
-                    </Button>
-                </AddDropZoneDialog>
-            </div>
-        )}
+                <div ref={canvasRef} className="h-full w-full relative bg-muted/40">
+                    {layout.map(zone => (
+                        <Rnd
+                            key={zone.id}
+                            size={{ width: zone.width, height: zone.height }}
+                            position={{ x: zone.x, y: zone.y }}
+                            style={{ zIndex: zone.zIndex }}
+                            minWidth={100}
+                            minHeight={100}
+                            disableDragging={!isEditing}
+                            enableResizing={ isEditing ? undefined : { top: false, right: false, bottom: false, left: false, topRight: false, bottomRight: false, bottomLeft: false, topLeft: false } }
+                            onDragStart={() => onBringToFront(zone.id)}
+                            onDragStop={(e, d) => {
+                                onUpdateLayout(zone.id, { x: d.x, y: d.y, width: zone.width, height: zone.height });
+                            }}
+                            onResizeStop={(e, direction, ref, delta, position) => {
+                                onUpdateLayout(zone.id, {
+                                    width: ref.offsetWidth,
+                                    height: ref.offsetHeight,
+                                    x: position.x,
+                                    y: position.y,
+                                });
+                            }}
+                            bounds="parent"
+                            className={isEditing ? 'border-2 border-dashed border-primary bg-primary/10 rounded-lg' : ''}
+                        >
+                          <DropZoneContent
+                              item={items[zone.category]}
+                              category={zone.category}
+                              onDrop={handleDrop}
+                              onRemoveItem={onRemoveItem}
+                              isEditing={isEditing}
+                              onRemoveZone={() => onRemoveZone(zone.id)}
+                          />
+                        </Rnd>
+                    ))}
+                    {isEditing && (
+                        <div className='absolute bottom-4 right-4 z-50'>
+                            <AddDropZoneDialog
+                                onAddZone={onAddZone}
+                                allCategories={allCategories}
+                                currentCategoriesOnCanvas={currentCategoriesOnCanvas}
+                            >
+                                <Button variant="outline" className='border-dashed'>
+                                    <Plus className="h-6 w-6 mr-2" />
+                                    Add Zone
+                                </Button>
+                            </AddDropZoneDialog>
+                        </div>
+                    )}
+                </div>
+            </TransformComponent>
+        </TransformWrapper>
       </div>
     </div>
   );
