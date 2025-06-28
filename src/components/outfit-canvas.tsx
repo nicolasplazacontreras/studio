@@ -55,12 +55,11 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
     if (isDragging) return true;
     
     // Custom panning behavior
-    ref.pan({
-      x: -event.deltaX,
-      y: -event.deltaY,
-      animationTime: 80,
-      animationType: 'easeOut'
-    });
+    if (ref.state) {
+        const newPositionX = ref.state.positionX - event.deltaX;
+        const newPositionY = ref.state.positionY - event.deltaY;
+        ref.setTransform(newPositionX, newPositionY, ref.state.scale, 80, 'easeOut');
+    }
     
     return true; // Stop the library from performing its default (zoom) action
   };
@@ -78,9 +77,14 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
     if (transformState) {
       const item: ClothingItem = JSON.parse(itemData);
       
-      // Translate viewport coordinates to canvas coordinates, accounting for pan and zoom
-      const x = (e.clientX - canvasRect.left - transformState.positionX) / transformState.scale;
-      const y = (e.clientY - canvasRect.top - transformState.positionY) / transformState.scale;
+      // The `canvasRect` is for the transformed element. Its `left` and `top` account for panning.
+      // The mouse position relative to the element's top-left corner is:
+      const xInScaledSpace = e.clientX - canvasRect.left;
+      const yInScaledSpace = e.clientY - canvasRect.top;
+
+      // To get the position in original, un-scaled space, divide by scale.
+      const x = xInScaledSpace / transformState.scale;
+      const y = yInScaledSpace / transformState.scale;
       
       onDrop(item, { x, y });
     }
@@ -254,12 +258,6 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
       </div>
       <div 
         className="flex-1 relative bg-background rounded-lg border overflow-hidden"
-        onDrop={handleDrop}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsOver(true);
-        }}
-        onDragLeave={() => setIsOver(false)}
       >
         <TransformWrapper
           ref={transformRef}
@@ -281,6 +279,12 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
                     ref={canvasRef}
                     className="relative"
                     style={{ width: 1200, height: 1200 }}
+                    onDrop={handleDrop}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsOver(true);
+                    }}
+                    onDragLeave={() => setIsOver(false)}
                 >
                     {items.map(canvasItem => (
                         <Rnd
