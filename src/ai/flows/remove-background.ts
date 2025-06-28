@@ -35,9 +35,11 @@ const removeBackgroundFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         { media: { url: input.photoDataUri } },
-        { text: `You are an expert image editor. Given this image of a clothing item, create a new image that has the background completely removed.
-The final output MUST be a PNG image with a 100% transparent background.
-Only the main clothing item should remain. Do not add any borders, shadows, or other effects.` }
+        { text: `You are an expert image editor specializing in background removal. Your task is to process the provided image of a clothing item.
+1. Isolate the main clothing item from its current background.
+2. Create a new image where the background is 100% transparent (alpha channel = 0).
+3. The output format MUST be a PNG image data URI to support transparency.
+4. Do not add any borders, shadows, or any other visual effects. Only the isolated clothing item should be visible.` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
