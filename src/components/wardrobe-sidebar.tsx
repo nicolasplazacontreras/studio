@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from 'react';
 import type { ClothingItem } from '@/lib/types';
 import { AddClothingItemDialog } from './add-clothing-item-dialog';
 import { ClothingItemCard } from './clothing-item-card';
 import { Button } from './ui/button';
-import { Plus, Sparkles } from 'lucide-react';
+import { Input } from './ui/input';
+import { Plus, Sparkles, Search } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import {
   Accordion,
@@ -23,7 +25,16 @@ interface WardrobeSidebarProps {
 }
 
 export default function WardrobeSidebar({ items, onAddItem, onGetAiSuggestions, isAiLoading, onDeleteItem, categories }: WardrobeSidebarProps) {
-  const itemsByCategory = items.reduce((acc, item) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredItems = items.filter(item => {
+    const term = searchTerm.toLowerCase();
+    const nameMatch = item.name.toLowerCase().includes(term);
+    const tagMatch = item.tags?.some(tag => tag.toLowerCase().includes(term));
+    return nameMatch || tagMatch;
+  });
+  
+  const itemsByCategory = filteredItems.reduce((acc, item) => {
     const { category } = item;
     if (!acc[category]) {
       acc[category] = [];
@@ -31,6 +42,8 @@ export default function WardrobeSidebar({ items, onAddItem, onGetAiSuggestions, 
     acc[category].push(item);
     return acc;
   }, {} as Record<string, ClothingItem[]>);
+  
+  const activeCategories = searchTerm ? Object.keys(itemsByCategory) : categories;
 
   return (
     <aside className="flex w-full max-w-xs flex-col border-r">
@@ -43,11 +56,24 @@ export default function WardrobeSidebar({ items, onAddItem, onGetAiSuggestions, 
           </Button>
         </AddClothingItemDialog>
       </div>
+      <div className="p-4 border-b">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Filter by name or tag..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
       <ScrollArea className="flex-1">
-        {items.length > 0 ? (
-          <Accordion type="multiple" defaultValue={categories} className="w-full">
+        {filteredItems.length > 0 ? (
+          <Accordion type="multiple" defaultValue={activeCategories} value={activeCategories} className="w-full">
             {categories.map((category) => {
               const categoryItems = itemsByCategory[category] || [];
+              if (searchTerm && categoryItems.length === 0) return null;
+              
               return (
                 <AccordionItem value={category} key={category}>
                   <AccordionTrigger className="px-4 hover:no-underline">
@@ -72,8 +98,8 @@ export default function WardrobeSidebar({ items, onAddItem, onGetAiSuggestions, 
           </Accordion>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <p className="text-muted-foreground">Your wardrobe is empty.</p>
-            <p className="text-sm text-muted-foreground">Add items to get started!</p>
+            <p className="text-muted-foreground">{searchTerm ? 'No items match your filter.' : 'Your wardrobe is empty.'}</p>
+            <p className="text-sm text-muted-foreground">{searchTerm ? 'Try a different search term.' : 'Add items to get started!'}</p>
           </div>
         )}
       </ScrollArea>

@@ -10,15 +10,15 @@ import { suggestOutfit, type SuggestOutfitOutput } from '@/ai/flows/suggest-outf
 import AiSuggestionsDialog from '@/components/ai-suggestions-dialog';
 
 const initialWardrobe: ClothingItem[] = [
-  { id: '1', name: 'White T-Shirt', category: 'Tops', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "white t-shirt" },
-  { id: '2', name: 'Blue Jeans', category: 'Bottoms', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "blue jeans" },
-  { id: '3', name: 'White Sneakers', category: 'Shoes', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "white sneakers" },
-  { id: '4', name: 'Black Leather Jacket', category: 'Tops', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "leather jacket" },
-  { id: '5', name: 'Beige Chinos', category: 'Bottoms', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "beige chinos" },
-  { id: '6', name: 'Brown Loafers', category: 'Shoes', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "brown loafers" },
-  { id: '7', name: 'Gold Necklace', category: 'Accessories', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "gold necklace" },
-  { id: '8', name: 'Baseball Cap', category: 'Hats', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "baseball cap" },
-  { id: '9', name: 'Leather Backpack', category: 'Bags', photoDataUri: 'https://placehold.co/400x400.png', "data-ai-hint": "leather backpack" },
+  { id: '1', name: 'White T-Shirt', category: 'Tops', photoDataUri: 'https://placehold.co/400x400.png', tags: ['summer', 'casual', 'basic'], "data-ai-hint": "white t-shirt" },
+  { id: '2', name: 'Blue Jeans', category: 'Bottoms', photoDataUri: 'https://placehold.co/400x400.png', tags: ['casual', 'denim'], "data-ai-hint": "blue jeans" },
+  { id: '3', name: 'White Sneakers', category: 'Shoes', photoDataUri: 'https://placehold.co/400x400.png', tags: ['casual', 'summer'], "data-ai-hint": "white sneakers" },
+  { id: '4', name: 'Black Leather Jacket', category: 'Tops', photoDataUri: 'https://placehold.co/400x400.png', tags: ['winter', 'going-out'], "data-ai-hint": "leather jacket" },
+  { id: '5', name: 'Beige Chinos', category: 'Bottoms', photoDataUri: 'https://placehold.co/400x400.png', tags: ['smart-casual', 'work'], "data-ai-hint": "beige chinos" },
+  { id: '6', name: 'Brown Loafers', category: 'Shoes', photoDataUri: 'https://placehold.co/400x400.png', tags: ['smart-casual', 'work'], "data-ai-hint": "brown loafers" },
+  { id: '7', name: 'Gold Necklace', category: 'Accessories', photoDataUri: 'https://placehold.co/400x400.png', tags: ['jewelry', 'going-out'], "data-ai-hint": "gold necklace" },
+  { id: '8', name: 'Baseball Cap', category: 'Hats', photoDataUri: 'https://placehold.co/400x400.png', tags: ['casual', 'summer'], "data-ai-hint": "baseball cap" },
+  { id: '9', name: 'Leather Backpack', category: 'Bags', photoDataUri: 'https://placehold.co/400x400.png', tags: ['casual', 'work'], "data-ai-hint": "leather backpack" },
 ];
 
 const initialLayout: LayoutItem[] = [
@@ -144,6 +144,7 @@ export default function Home() {
           category: item.category,
           photoDataUri: item.photoDataUri,
           description: '',
+          tags: item.tags,
         })),
       });
       setAiSuggestions(suggestions);

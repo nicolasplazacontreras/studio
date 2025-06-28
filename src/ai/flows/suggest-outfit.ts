@@ -22,6 +22,7 @@ const SuggestOutfitInputSchema = z.object({
         ),
       category: z.string().describe('The category of the clothing item (e.g., hats, top, bottom, shoes, accessories, bags).'),
       description: z.string().optional().describe('Additional description of the clothing item.'),
+      tags: z.array(z.string()).optional().describe('Tags associated with the clothing item (e.g., summer, casual, work).'),
     })
   ).describe('An array of clothing items in the user wardrobe.'),
 });
@@ -52,16 +53,18 @@ const prompt = ai.definePrompt({
   input: {schema: SuggestOutfitInputSchema},
   output: {schema: SuggestOutfitOutputSchema},
   prompt: `You are a personal stylist AI. Given a user's wardrobe, suggest 3 different outfits.
+Use the provided tags (like 'summer', 'work', 'casual') to create stylish, appropriate, and cohesive outfits. For example, don't mix 'winter' and 'summer' items.
 
 Wardrobe:
 {{#each clothingItems}}
 - Name: {{this.name}}
   Category: {{this.category}}
+  {{#if this.tags}}Tags: {{#each this.tags}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}
   Description: {{#if this.description}}{{this.description}}{{else}}No description provided.{{/if}}
   Photo: {{media url=this.photoDataUri}}
 {{/each}}
 
-For each outfit, provide a description and list the clothing items included, including their names, categories and photos.  Focus on outfits that are stylish and appropriate for everyday wear.
+For each outfit, provide a description and list the clothing items included, including their names, categories and photos. Focus on outfits that are stylish and appropriate for everyday wear, paying close attention to the tags.
 `,
 });
 

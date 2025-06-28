@@ -27,6 +27,7 @@ export function AddClothingItemDialog({ children, onAddItem, categories }: AddCl
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [tags, setTags] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const { toast } = useToast();
 
@@ -54,10 +55,12 @@ export function AddClothingItemDialog({ children, onAddItem, categories }: AddCl
         name,
         category,
         photoDataUri: reader.result as string,
+        tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
       });
       setIsOpen(false);
       setName('');
       setCategory('');
+      setTags('');
       setPhoto(null);
     };
     reader.onerror = (error) => {
@@ -97,6 +100,10 @@ export function AddClothingItemDialog({ children, onAddItem, categories }: AddCl
                     ))}
                 </SelectContent>
             </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="tags" className="text-right">Tags</Label>
+            <Input id="tags" value={tags} onChange={(e) => setTags(e.target.value)} className="col-span-3" placeholder="casual, summer, work (comma-separated)" />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="photo" className="text-right">Photo</Label>
