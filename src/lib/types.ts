@@ -4,6 +4,7 @@ export interface ClothingItem {
   category: string;
   photoDataUri: string;
   originalPhotoDataUri?: string;
+  maskDataUri?: string;
   tags?: string[];
   "data-ai-hint"?: string;
 }

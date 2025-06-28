@@ -135,6 +135,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             ...canvasItem.item,
             photoDataUri: canvasItem.item.originalPhotoDataUri,
             originalPhotoDataUri: undefined,
+            maskDataUri: undefined,
         };
         onItemUpdate(updatedItem);
         toast({ title: "Reverted to Original" });
@@ -152,11 +153,15 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
     try {
         const flow = action === 'cutout' ? createCutout : removeBackground;
         const result = await flow({ photoDataUri: canvasItem.item.photoDataUri });
+        
         const updatedItem: ClothingItem = {
             ...canvasItem.item,
-            photoDataUri: result.photoDataUri,
+            // The original photo is preserved in photoDataUri for the mask to apply to.
+            maskDataUri: result.maskDataUri, 
+            // We use originalPhotoDataUri to store the original image to signal that we can revert.
             originalPhotoDataUri: canvasItem.item.originalPhotoDataUri || canvasItem.item.photoDataUri,
         };
+
         onItemUpdate(updatedItem);
         toast({ title: `${action === 'cutout' ? 'Cutout created' : 'Background removed'} successfully!` });
     } catch (error) {
@@ -330,6 +335,17 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
         )}
         {items.map(canvasItem => {
             const hasAlteredImage = !!canvasItem.item.originalPhotoDataUri;
+            const itemStyle: React.CSSProperties = {};
+            if (canvasItem.item.maskDataUri) {
+                itemStyle.maskImage = `url(${canvasItem.item.maskDataUri})`;
+                itemStyle.WebkitMaskImage = `url(${canvasItem.item.maskDataUri})`;
+                itemStyle.maskSize = 'cover';
+                itemStyle.WebkitMaskSize = 'cover';
+                itemStyle.maskRepeat = 'no-repeat';
+                itemStyle.WebkitMaskRepeat = 'no-repeat';
+                itemStyle.maskPosition = 'center';
+                itemStyle.WebkitMaskPosition = 'center';
+            }
             return (
             <Rnd
                 key={canvasItem.instanceId}
@@ -362,12 +378,14 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                   className={`w-full h-full relative border-2 rounded-md transition-colors ${selectedInstanceIds.includes(canvasItem.instanceId) ? 'border-primary' : 'border-transparent group-hover:border-primary group-hover:border-dashed'}`}
                   ref={el => { if(el) itemRefs.current[canvasItem.instanceId] = el}}
                 >
-                    <Image
-                        src={canvasItem.item.photoDataUri}
-                        alt={canvasItem.item.name}
-                        fill
-                        className="object-cover pointer-events-none rounded-md"
-                    />
+                    <div className="w-full h-full" style={itemStyle}>
+                        <Image
+                            src={canvasItem.item.photoDataUri}
+                            alt={canvasItem.item.name}
+                            fill
+                            className="object-cover pointer-events-none rounded-md"
+                        />
+                    </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button

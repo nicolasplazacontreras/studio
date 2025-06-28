@@ -16,7 +16,7 @@ const CreateCutoutInputSchema = z.object({
 export type CreateCutoutInput = z.infer<typeof CreateCutoutInputSchema>;
 
 const CreateCutoutOutputSchema = z.object({
-  photoDataUri: z.string().describe("The processed cutout image with a white border and transparent background, as a data URI."),
+  maskDataUri: z.string().describe("A black and white mask for the cutout, as a data URI."),
 });
 export type CreateCutoutOutput = z.infer<typeof CreateCutoutOutputSchema>;
 
@@ -35,7 +35,7 @@ const createCutoutFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         { media: { url: input.photoDataUri } },
-        { text: `Analyze the image and identify the main subject. Create a perfect cutout of the subject. Add a thick, irregular white border around the subject to simulate a scissor cut. The output MUST be a PNG file. Everything outside the white border MUST be transparent. Every pixel outside the white border must have an alpha value of zero.` }
+        { text: `Analyze the image and identify the main subject. Create a black and white mask. The mask must represent the subject with a thick, irregular white border around it, as if cut with scissors. The subject and its border must be solid white, and everything else must be solid black. The output MUST be a PNG file.` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
@@ -46,6 +46,6 @@ const createCutoutFlow = ai.defineFlow(
       throw new Error('Image generation failed to return an image.');
     }
 
-    return { photoDataUri: media.url };
+    return { maskDataUri: media.url };
   }
 );

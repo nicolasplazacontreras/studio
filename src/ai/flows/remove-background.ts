@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for removing the background from a clothing item image.
+ * @fileOverview A Genkit flow for removing the background from a clothing item image by creating a mask.
  *
- * - removeBackground - A function that removes the background from an image.
+ * - removeBackground - A function that creates a mask for an image.
  * - RemoveBackgroundInput - The input type for the removeBackground function.
  * - RemoveBackgroundOutput - The return type for the removeBackground function.
  */
@@ -16,7 +16,7 @@ const RemoveBackgroundInputSchema = z.object({
 export type RemoveBackgroundInput = z.infer<typeof RemoveBackgroundInputSchema>;
 
 const RemoveBackgroundOutputSchema = z.object({
-  photoDataUri: z.string().describe("The processed image with a transparent background, as a data URI."),
+  maskDataUri: z.string().describe("A black and white mask of the subject, as a data URI."),
 });
 export type RemoveBackgroundOutput = z.infer<typeof RemoveBackgroundOutputSchema>;
 
@@ -35,7 +35,7 @@ const removeBackgroundFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         { media: { url: input.photoDataUri } },
-        { text: `Analyze the image and identify the main subject. Create a perfect cutout of the subject. The output MUST be a PNG file. The background of the PNG file MUST be transparent. Every pixel not belonging to the subject must have an alpha value of zero.` }
+        { text: `Analyze the image and identify the main subject. Create a black and white mask for this subject. The subject must be solid white, and the background must be solid black. The output must be a PNG file.` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
@@ -46,6 +46,6 @@ const removeBackgroundFlow = ai.defineFlow(
       throw new Error('Image generation failed to return an image.');
     }
 
-    return { photoDataUri: media.url };
+    return { maskDataUri: media.url };
   }
 );
