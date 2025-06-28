@@ -69,12 +69,16 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
     e.preventDefault();
     setIsOver(false);
     const itemData = e.dataTransfer.getData('application/json');
+    if (!itemData) return;
+
     const transformState = transformRef.current?.state;
-    const canvasRect = e.currentTarget.getBoundingClientRect();
+    const dropTarget = e.currentTarget;
+    const canvasRect = dropTarget.getBoundingClientRect();
     
-    if (itemData && transformState && canvasRect) {
+    if (transformState) {
       const item: ClothingItem = JSON.parse(itemData);
       
+      // Translate viewport coordinates to canvas coordinates, accounting for pan and zoom
       const x = (e.clientX - canvasRect.left - transformState.positionX) / transformState.scale;
       const y = (e.clientY - canvasRect.top - transformState.positionY) / transformState.scale;
       
@@ -248,7 +252,15 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
           </Button>
         </div>
       </div>
-      <div className="flex-1 relative bg-background rounded-lg border overflow-hidden">
+      <div 
+        className="flex-1 relative bg-background rounded-lg border overflow-hidden"
+        onDrop={handleDrop}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsOver(true);
+        }}
+        onDragLeave={() => setIsOver(false)}
+      >
         <TransformWrapper
           ref={transformRef}
           minScale={0.2}
@@ -256,23 +268,18 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
           initialScale={1}
           onWheel={handleWheel}
           wheel={{ step: 0.2, disabled: isDragging }}
-          panning={{ disabled: isDragging }}
+          panning={{ disabled: isDragging || isOver }}
           doubleClick={{ disabled: true }}
           limitToBounds={false}
         >
             <CanvasViewControls />
             <TransformComponent
                 wrapperClass={`w-full h-full cursor-grab active:cursor-grabbing`}
+                contentClass={`bg-muted/40 transition-colors ${isOver ? 'bg-accent' : ''}`}
             >
                 <div
                     ref={canvasRef}
-                    onDrop={handleDrop}
-                    onDragOver={(e) => {
-                        e.preventDefault();
-                        setIsOver(true);
-                    }}
-                    onDragLeave={() => setIsOver(false)}
-                    className={`relative bg-muted/40 transition-colors ${isOver ? 'bg-accent' : ''}`}
+                    className="relative"
                     style={{ width: 1200, height: 1200 }}
                 >
                     {items.map(canvasItem => (
