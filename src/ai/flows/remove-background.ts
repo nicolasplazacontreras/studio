@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for creating a magazine-style cutout image of a clothing item.
+ * @fileOverview A Genkit flow for removing the background from a clothing item image.
  *
- * - removeBackground - A function that creates a cutout image from an original photo.
+ * - removeBackground - A function that removes the background from an image.
  * - RemoveBackgroundInput - The input type for the removeBackground function.
  * - RemoveBackgroundOutput - The return type for the removeBackground function.
  */
@@ -16,7 +16,7 @@ const RemoveBackgroundInputSchema = z.object({
 export type RemoveBackgroundInput = z.infer<typeof RemoveBackgroundInputSchema>;
 
 const RemoveBackgroundOutputSchema = z.object({
-  photoDataUri: z.string().describe("The processed cutout image with a white border and transparent background, as a data URI."),
+  photoDataUri: z.string().describe("The processed image with a transparent background, as a data URI."),
 });
 export type RemoveBackgroundOutput = z.infer<typeof RemoveBackgroundOutputSchema>;
 
@@ -35,10 +35,9 @@ const removeBackgroundFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         { media: { url: input.photoDataUri } },
-        { text: `You are an expert digital artist creating assets for a fashion collage. Given this image of a clothing item, create a new image that looks like a "cutout" from a fashion magazine.
-First, perfectly isolate the clothing item from its background.
-Then, give the isolated item a slightly irregular, thick white border, making it look as if it were carefully cut out with scissors.
-The final output must be a PNG image with a fully transparent background outside of the white border. Do not alter the clothing item itself.` }
+        { text: `You are an expert image editor. Given this image of a clothing item, create a new image that has the background completely removed.
+The final output MUST be a PNG image with a 100% transparent background.
+Only the main clothing item should remain. Do not add any borders, shadows, or other effects.` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],

@@ -4,15 +4,16 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { generateOutfitImage } from '@/ai/flows/generate-outfit-image';
 import { removeBackground } from '@/ai/flows/remove-background';
+import { createCutout } from '@/ai/flows/create-cutout';
 import { toJpeg } from 'html-to-image';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 import { Rnd } from 'react-rnd';
 
 interface OutfitCanvasProps {
@@ -41,7 +42,6 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   const [isOver, setIsOver] = useState(false);
   const [processingItemId, setProcessingItemId] = useState<string | null>(null);
 
-  // New state for multi-select
   const [selectedInstanceIds, setSelectedInstanceIds] = useState<string[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState<{ x: number, y: number, width: number, height: number, startX: number, startY: number } | null>(null);
@@ -129,37 +129,39 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
     }
   };
   
-  const handleCutoutAction = async (canvasItem: CanvasItem) => {
-    if (processingItemId) return;
-
-    // Check if we are reverting
+  const handleRevert = (canvasItem: CanvasItem) => {
     if (canvasItem.item.originalPhotoDataUri) {
         const updatedItem: ClothingItem = {
             ...canvasItem.item,
             photoDataUri: canvasItem.item.originalPhotoDataUri,
-            originalPhotoDataUri: undefined, // Clear the original
+            originalPhotoDataUri: undefined,
         };
         onItemUpdate(updatedItem);
-        toast({ title: "Reverted to Original", description: "The item's original image has been restored." });
-        return;
+        toast({ title: "Reverted to Original" });
     }
+  };
+  
+  const handleAiAction = async (canvasItem: CanvasItem, action: 'cutout' | 'remove') => {
+    if (processingItemId) return;
 
-    // If not reverting, create cutout
     setProcessingItemId(canvasItem.instanceId);
-    toast({ title: "Creating cutout...", description: "The AI is working its magic. This may take a moment." });
+    
+    const actionText = action === 'cutout' ? 'cutout' : 'background removal';
+    toast({ title: `Creating ${actionText}...`, description: "The AI is working its magic. This may take a moment." });
 
     try {
-        const result = await removeBackground({ photoDataUri: canvasItem.item.photoDataUri });
+        const flow = action === 'cutout' ? createCutout : removeBackground;
+        const result = await flow({ photoDataUri: canvasItem.item.photoDataUri });
         const updatedItem: ClothingItem = {
             ...canvasItem.item,
             photoDataUri: result.photoDataUri,
-            originalPhotoDataUri: canvasItem.item.photoDataUri, // Store the original
+            originalPhotoDataUri: canvasItem.item.originalPhotoDataUri || canvasItem.item.photoDataUri,
         };
         onItemUpdate(updatedItem);
-        toast({ title: "Cutout created!" });
+        toast({ title: `${action === 'cutout' ? 'Cutout created' : 'Background removed'} successfully!` });
     } catch (error) {
-        console.error("Cutout creation failed:", error);
-        toast({ variant: "destructive", title: "Cutout creation failed", description: "The AI couldn't process this image. Please try another." });
+        console.error(`${actionText} failed:`, error);
+        toast({ variant: "destructive", title: `${actionText} failed`, description: "The AI couldn't process this image. Please try another." });
     } finally {
         setProcessingItemId(null);
     }
@@ -327,7 +329,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
           />
         )}
         {items.map(canvasItem => {
-            const hasCutout = !!canvasItem.item.originalPhotoDataUri;
+            const hasAlteredImage = !!canvasItem.item.originalPhotoDataUri;
             return (
             <Rnd
                 key={canvasItem.instanceId}
@@ -366,19 +368,39 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                         fill
                         className="object-cover pointer-events-none rounded-md"
                     />
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="absolute -top-3 -left-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleCutoutAction(canvasItem);
-                        }}
-                        disabled={!!processingItemId}
-                        title={hasCutout ? "Revert to original" : "Create cutout"}
-                    >
-                        {processingItemId === canvasItem.instanceId ? <Sparkles className="h-4 w-4 animate-spin" /> : (hasCutout ? <Undo className="h-4 w-4" /> : <Scissors className="h-4 w-4" />)}
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="absolute -top-3 -left-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
+                                disabled={!!processingItemId}
+                                onClick={e => e.stopPropagation()}
+                            >
+                                {processingItemId === canvasItem.instanceId ? <Sparkles className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                                <span className="sr-only">AI Image Tools</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent onClick={e => e.stopPropagation()} side="right" align="start">
+                            <DropdownMenuItem onSelect={() => handleAiAction(canvasItem, 'cutout')}>
+                                <Scissors className="mr-2 h-4 w-4" />
+                                <span>Magazine Cutout</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleAiAction(canvasItem, 'remove')}>
+                                <ImageIcon className="mr-2 h-4 w-4" />
+                                <span>Remove Background</span>
+                            </DropdownMenuItem>
+                            {hasAlteredImage && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => handleRevert(canvasItem)}>
+                                        <Undo className="mr-2 h-4 w-4" />
+                                        <span>Revert to Original</span>
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                         variant="destructive"
                         size="icon"
