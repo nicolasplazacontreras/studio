@@ -79,6 +79,29 @@ export default function Home() {
     });
   };
 
+  const handleUpdateItem = (updatedItem: ClothingItem) => {
+    const oldItem = wardrobe.find(item => item.id === updatedItem.id);
+    
+    setWardrobe(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
+
+    // If the edited item is on the canvas, we need to handle it
+    if(oldItem && canvasItems[oldItem.category]?.id === updatedItem.id) {
+      if(oldItem.category === updatedItem.category) {
+        // Category is the same, just update the item on the canvas
+        setCanvasItems(prev => ({...prev, [updatedItem.category]: updatedItem}));
+      } else {
+        // Category changed, remove it from its old spot on the canvas
+        handleRemoveFromCanvas(oldItem.category);
+      }
+    }
+    
+    toast({
+      title: "Item Updated",
+      description: `${updatedItem.name} has been updated successfully.`,
+    });
+  };
+
+
   const handleDropOnCanvas = (item: ClothingItem) => {
     setCanvasItems(prev => ({ ...prev, [item.category]: item }));
   };
@@ -224,6 +247,7 @@ export default function Home() {
         <WardrobeSidebar
           items={wardrobe}
           onAddItem={handleAddItem}
+          onUpdateItem={handleUpdateItem}
           onGetAiSuggestions={handleGetAiSuggestions}
           isAiLoading={isAiLoading}
           onDeleteItem={handleDeleteItem}

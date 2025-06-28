@@ -4,14 +4,15 @@ import Image from 'next/image';
 import type { ClothingItem } from '@/lib/types';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 
 interface ClothingItemCardProps {
   item: ClothingItem;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
-export function ClothingItemCard({ item, onDelete }: ClothingItemCardProps) {
+export function ClothingItemCard({ item, onDelete, onEdit }: ClothingItemCardProps) {
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('application/json', JSON.stringify(item));
   };
@@ -35,6 +36,18 @@ export function ClothingItemCard({ item, onDelete }: ClothingItemCardProps) {
         <p className="absolute bottom-2 left-2 text-sm font-medium text-white drop-shadow-md">
           {item.name}
         </p>
+        <Button
+          size="icon"
+          variant="outline"
+          className="absolute top-2 left-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
         <Button
           size="icon"
           variant="destructive"
