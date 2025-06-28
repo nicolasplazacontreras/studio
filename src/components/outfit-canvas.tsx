@@ -375,10 +375,13 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
         >
             <CanvasViewControls />
             <TransformComponent
-                wrapperClass={!isEditing ? 'cursor-grab active:cursor-grabbing' : ''}
-                contentClass="w-full h-full"
+                wrapperClass={`w-full h-full ${!isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
             >
-                <div ref={canvasRef} className="h-full w-full relative bg-muted/40">
+                <div
+                    ref={canvasRef}
+                    className="relative bg-muted/40"
+                    style={{ width: 950, height: 950 }}
+                >
                     {layout.map(zone => (
                         <Rnd
                             key={zone.id}
