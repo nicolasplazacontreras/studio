@@ -341,7 +341,6 @@ export default function OutfitCanvas({ items, layout, onUpdateLayout, onBringToF
                 style={{ zIndex: zone.zIndex }}
                 minWidth={100}
                 minHeight={100}
-                lockAspectRatio
                 disableDragging={!isEditing}
                 enableResizing={ isEditing ? undefined : { top: false, right: false, bottom: false, left: false, topRight: false, bottomRight: false, bottomLeft: false, topLeft: false } }
                 onDragStart={() => onBringToFront(zone.id)}
