@@ -22,15 +22,14 @@ const initialWardrobe: ClothingItem[] = [
 ];
 
 const initialLayout: LayoutItem[] = [
-  { id: 'hats', category: 'Hats', row: 1, col: 1 },
-  { id: 'tops', category: 'Tops', row: 1, col: 2 },
-  { id: 'accessories', category: 'Accessories', row: 2, col: 1 },
-  { id: 'bottoms', category: 'Bottoms', row: 2, col: 2 },
-  { id: 'bags', category: 'Bags', row: 2, col: 3 },
-  { id: 'shoes', category: 'Shoes', row: 3, col: 2 },
+    { id: 'hats', category: 'Hats', x: 350, y: 10, width: 200, height: 160, zIndex: 1 },
+    { id: 'tops', category: 'Tops', x: 275, y: 175, width: 350, height: 250, zIndex: 2 },
+    { id: 'accessories', category: 'Accessories', x: 50, y: 175, width: 200, height: 200, zIndex: 3 },
+    { id: 'bottoms', category: 'Bottoms', x: 275, y: 430, width: 350, height: 250, zIndex: 2 },
+    { id: 'bags', category: 'Bags', x: 650, y: 300, width: 200, height: 200, zIndex: 3 },
+    { id: 'shoes', category: 'Shoes', x: 350, y: 685, width: 200, height: 160, zIndex: 1 },
 ];
 const initialCategories = ['Hats', 'Tops', 'Bottoms', 'Shoes', 'Accessories', 'Bags'];
-const allGridSlots = Array.from({ length: 9 }, (_, i) => ({ row: Math.floor(i / 3) + 1, col: (i % 3) + 1 }));
 
 export default function Home() {
   const [wardrobe, setWardrobe] = useState<ClothingItem[]>([]);
@@ -49,9 +48,19 @@ export default function Home() {
     const savedWardrobe = localStorage.getItem('wrdrobe_wardrobe');
     setWardrobe(savedWardrobe ? JSON.parse(savedWardrobe) : initialWardrobe);
 
-    const savedLayout = localStorage.getItem('wrdrobe_layout');
-    setLayout(savedLayout ? JSON.parse(savedLayout) : initialLayout);
-
+    const savedLayoutRaw = localStorage.getItem('wrdrobe_layout');
+    if (savedLayoutRaw) {
+        const savedLayout = JSON.parse(savedLayoutRaw);
+        // Check if layout is in the new format (with x, y), otherwise reset to default
+        if (savedLayout.length > 0 && savedLayout[0].x !== undefined) {
+            setLayout(savedLayout);
+        } else {
+            setLayout(initialLayout);
+        }
+    } else {
+        setLayout(initialLayout);
+    }
+    
     const savedCategories = localStorage.getItem('wrdrobe_categories');
     setCategories(savedCategories ? JSON.parse(savedCategories) : initialCategories);
   }, []);
@@ -206,19 +215,16 @@ export default function Home() {
       return;
     }
 
-    const occupiedSlots = new Set(layout.map(zone => `${zone.row}-${zone.col}`));
-    const availableSlot = allGridSlots.find(slot => !occupiedSlots.has(`${slot.row}-${slot.col}`));
+    const maxZIndex = Math.max(0, ...layout.map(l => l.zIndex || 0));
 
-    if (!availableSlot) {
-      toast({ variant: 'destructive', title: 'Canvas is full', description: 'No more space to add a new drop zone.' });
-      return;
-    }
-    
     const newZone: LayoutItem = {
         id: Date.now().toString(),
         category,
-        row: availableSlot.row,
-        col: availableSlot.col,
+        x: 10,
+        y: 10,
+        width: 200,
+        height: 200,
+        zIndex: maxZIndex + 1,
     };
     
     if (!categories.includes(category)) {
@@ -240,6 +246,17 @@ export default function Home() {
     toast({ title: 'Drop Zone Removed', description: `Category "${zoneToRemove.category}" removed from canvas.` });
   };
 
+  const handleUpdateLayout = (id: string, updates: { x: number; y: number; width: number; height: number; }) => {
+    setLayout(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+  };
+
+  const handleBringToFront = (id: string) => {
+    setLayout(prev => {
+        const maxZIndex = Math.max(0, ...prev.map(item => item.zIndex || 0));
+        return prev.map(item => item.id === id ? { ...item, zIndex: maxZIndex + 1 } : item);
+    });
+  };
+
   return (
     <div className="flex h-screen w-full flex-col bg-background font-body">
       <Header />
@@ -256,7 +273,8 @@ export default function Home() {
         <OutfitCanvas
           items={canvasItems}
           layout={layout}
-          setLayout={setLayout}
+          onUpdateLayout={handleUpdateLayout}
+          onBringToFront={handleBringToFront}
           onDrop={handleDropOnCanvas}
           onRemoveItem={handleRemoveFromCanvas}
           onClear={handleClearCanvas}

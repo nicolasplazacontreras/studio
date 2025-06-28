@@ -19,6 +19,9 @@ export interface Outfit {
 export interface LayoutItem {
     id: string;
     category: string;
-    row: number;
-    col: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    zIndex: number;
 }
