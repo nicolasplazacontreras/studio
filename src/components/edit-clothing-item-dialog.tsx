@@ -97,7 +97,7 @@ export function EditClothingItemDialog({ isOpen, onOpenChange, item, onUpdateIte
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-            <div className="col-span-4 flex justify-center">
+            <div className="flex justify-center">
                 <Image 
                     src={newPhotoDataUri || item.photoDataUri} 
                     alt="Item preview" 
