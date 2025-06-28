@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, RefreshCw } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -13,7 +13,6 @@ import { generateOutfitImage } from '@/ai/flows/generate-outfit-image';
 import { toJpeg } from 'html-to-image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Rnd } from 'react-rnd';
-import { TransformWrapper, TransformComponent, useControls, type ReactZoomPanPinchRef } from 'react-zoom-pan-pinch';
 
 interface OutfitCanvasProps {
   items: CanvasItem[];
@@ -25,69 +24,38 @@ interface OutfitCanvasProps {
   onSave: () => void;
 }
 
-const CanvasViewControls = () => {
-    const { resetTransform } = useControls();
-    return (
-        <Button variant="outline" size="sm" className="absolute bottom-4 left-4 z-50 bg-background/80" onClick={() => resetTransform()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Reset View
-        </Button>
-    )
-}
-
 export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem, onBringToFront, onClear, onSave }: OutfitCanvasProps) {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
-  const transformRef = useRef<ReactZoomPanPinchRef>(null);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const [isOver, setIsOver] = useState(false);
-
-  const handleWheel = (ref: ReactZoomPanPinchRef, event: WheelEvent): boolean => {
-    if (event.altKey) {
-      return false; // Let the library handle zoom when Alt is pressed
-    }
-    // Disable panning if we're dragging an RND component
-    if (isDragging) return true;
-    
-    // Custom panning behavior
-    if (ref.state) {
-        const newPositionX = ref.state.positionX - event.deltaX;
-        const newPositionY = ref.state.positionY - event.deltaY;
-        ref.setTransform(newPositionX, newPositionY, ref.state.scale, 80, 'easeOut');
-    }
-    
-    return true; // Stop the library from performing its default (zoom) action
-  };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsOver(false);
     const itemData = e.dataTransfer.getData('application/json');
     if (!itemData) return;
-
-    const transformState = transformRef.current?.state;
-    const dropTarget = e.currentTarget;
-    const canvasRect = dropTarget.getBoundingClientRect();
     
-    if (transformState) {
-      const item: ClothingItem = JSON.parse(itemData);
-      
-      // The `canvasRect` is for the transformed element. Its `left` and `top` account for panning.
-      // The mouse position relative to the element's top-left corner is:
-      const xInScaledSpace = e.clientX - canvasRect.left;
-      const yInScaledSpace = e.clientY - canvasRect.top;
+    const item: ClothingItem = JSON.parse(itemData);
+    const canvasRect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - canvasRect.left;
+    const y = e.clientY - canvasRect.top;
+    
+    onDrop(item, { x, y });
+  };
 
-      // To get the position in original, un-scaled space, divide by scale.
-      const x = xInScaledSpace / transformState.scale;
-      const y = yInScaledSpace / transformState.scale;
-      
-      onDrop(item, { x, y });
-    }
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsOver(false);
   };
 
   const handleSimpleDownload = async () => {
@@ -112,7 +80,7 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
     toast({ title: "Preparing your image..." });
 
     try {
-        const dataUrl = await toJpeg(canvasRef.current, { quality: 0.95, style: { background: 'transparent' } });
+        const dataUrl = await toJpeg(canvasRef.current, { quality: 0.95, style: { background: 'white' } });
         const link = document.createElement('a');
         link.href = dataUrl;
         link.download = `wrdrobe-outfit-canvas-${Date.now()}.jpg`;
@@ -257,90 +225,60 @@ export default function OutfitCanvas({ items, onDrop, onRemoveItem, onUpdateItem
         </div>
       </div>
       <div 
-        className="flex-1 relative bg-background rounded-lg border overflow-hidden"
+        ref={canvasRef}
+        className={`flex-1 relative bg-background rounded-lg border overflow-hidden transition-colors ${isOver ? 'bg-accent' : ''}`}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
       >
-        <TransformWrapper
-          ref={transformRef}
-          minScale={0.2}
-          maxScale={4}
-          initialScale={1}
-          onWheel={handleWheel}
-          wheel={{ step: 0.2, disabled: isDragging }}
-          panning={{ disabled: isDragging || isOver }}
-          doubleClick={{ disabled: true }}
-          limitToBounds={false}
-        >
-            <CanvasViewControls />
-            <TransformComponent
-                wrapperClass={`w-full h-full cursor-grab active:cursor-grabbing`}
-                contentClass={`bg-muted/40 transition-colors ${isOver ? 'bg-accent' : ''}`}
+        {items.map(canvasItem => (
+            <Rnd
+                key={canvasItem.instanceId}
+                size={{ width: canvasItem.width, height: canvasItem.height }}
+                position={{ x: canvasItem.x, y: canvasItem.y }}
+                style={{ zIndex: canvasItem.zIndex }}
+                minWidth={50}
+                minHeight={50}
+                onDragStop={(e, d) => {
+                    onUpdateItem(canvasItem.instanceId, { x: d.x, y: d.y });
+                }}
+                onResizeStop={(e, direction, ref, delta, position) => {
+                    onUpdateItem(canvasItem.instanceId, {
+                        width: ref.offsetWidth,
+                        height: ref.offsetHeight,
+                        ...position,
+                    });
+                }}
+                onMouseDown={() => onBringToFront(canvasItem.instanceId)}
+                bounds="parent"
+                className="group"
             >
-                <div
-                    ref={canvasRef}
-                    className="relative"
-                    style={{ width: 1200, height: 1200 }}
-                    onDrop={handleDrop}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsOver(true);
-                    }}
-                    onDragLeave={() => setIsOver(false)}
-                >
-                    {items.map(canvasItem => (
-                        <Rnd
-                            key={canvasItem.instanceId}
-                            size={{ width: canvasItem.width, height: canvasItem.height }}
-                            position={{ x: canvasItem.x, y: canvasItem.y }}
-                            style={{ zIndex: canvasItem.zIndex }}
-                            minWidth={50}
-                            minHeight={50}
-                            onDragStart={() => setIsDragging(true)}
-                            onDragStop={(e, d) => {
-                                onUpdateItem(canvasItem.instanceId, { x: d.x, y: d.y });
-                                setIsDragging(false);
-                            }}
-                            onResizeStart={() => setIsDragging(true)}
-                            onResizeStop={(e, direction, ref, delta, position) => {
-                                onUpdateItem(canvasItem.instanceId, {
-                                    width: ref.offsetWidth,
-                                    height: ref.offsetHeight,
-                                    ...position,
-                                });
-                                setIsDragging(false);
-                            }}
-                            onMouseDown={() => onBringToFront(canvasItem.instanceId)}
-                            bounds="parent"
-                            className="group"
-                        >
-                            <div className="w-full h-full relative border-2 border-transparent group-hover:border-primary group-hover:border-dashed rounded-md">
-                                <Image
-                                    src={canvasItem.item.photoDataUri}
-                                    alt={canvasItem.item.name}
-                                    fill
-                                    className="object-contain pointer-events-none"
-                                />
-                                <Button
-                                    variant="destructive"
-                                    size="icon"
-                                    className="absolute -top-3 -right-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onRemoveItem(canvasItem.instanceId)
-                                    }}
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </Rnd>
-                    ))}
-                     {items.length === 0 && !isOver && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <p className="text-muted-foreground text-lg">Drop clothing items here to start building your outfit!</p>
-                        </div>
-                    )}
+                <div className="w-full h-full relative border-2 border-transparent group-hover:border-primary group-hover:border-dashed rounded-md">
+                    <Image
+                        src={canvasItem.item.photoDataUri}
+                        alt={canvasItem.item.name}
+                        fill
+                        className="object-contain pointer-events-none"
+                    />
+                    <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-3 -right-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onRemoveItem(canvasItem.instanceId)
+                        }}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
                 </div>
-            </TransformComponent>
-        </TransformWrapper>
+            </Rnd>
+        ))}
+         {items.length === 0 && !isOver && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <p className="text-muted-foreground text-lg">Drop clothing items here to start building your outfit!</p>
+            </div>
+        )}
       </div>
     </div>
   );
