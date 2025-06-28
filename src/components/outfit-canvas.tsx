@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -128,9 +128,23 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
         setIsDownloading(false);
     }
   };
-
-  const handleCreateCutout = async (canvasItem: CanvasItem) => {
+  
+  const handleCutoutAction = async (canvasItem: CanvasItem) => {
     if (processingItemId) return;
+
+    // Check if we are reverting
+    if (canvasItem.item.originalPhotoDataUri) {
+        const updatedItem: ClothingItem = {
+            ...canvasItem.item,
+            photoDataUri: canvasItem.item.originalPhotoDataUri,
+            originalPhotoDataUri: undefined, // Clear the original
+        };
+        onItemUpdate(updatedItem);
+        toast({ title: "Reverted to Original", description: "The item's original image has been restored." });
+        return;
+    }
+
+    // If not reverting, create cutout
     setProcessingItemId(canvasItem.instanceId);
     toast({ title: "Creating cutout...", description: "The AI is working its magic. This may take a moment." });
 
@@ -139,6 +153,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
         const updatedItem: ClothingItem = {
             ...canvasItem.item,
             photoDataUri: result.photoDataUri,
+            originalPhotoDataUri: canvasItem.item.photoDataUri, // Store the original
         };
         onItemUpdate(updatedItem);
         toast({ title: "Cutout created!" });
@@ -311,7 +326,9 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             }}
           />
         )}
-        {items.map(canvasItem => (
+        {items.map(canvasItem => {
+            const hasCutout = !!canvasItem.item.originalPhotoDataUri;
+            return (
             <Rnd
                 key={canvasItem.instanceId}
                 size={{ width: canvasItem.width, height: canvasItem.height }}
@@ -347,7 +364,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                         src={canvasItem.item.photoDataUri}
                         alt={canvasItem.item.name}
                         fill
-                        className="object-cover pointer-events-none"
+                        className="object-cover pointer-events-none rounded-md"
                     />
                     <Button
                         variant="outline"
@@ -355,12 +372,12 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                         className="absolute -top-3 -left-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
                         onClick={(e) => {
                             e.stopPropagation();
-                            handleCreateCutout(canvasItem);
+                            handleCutoutAction(canvasItem);
                         }}
                         disabled={!!processingItemId}
-                        title="Create cutout"
+                        title={hasCutout ? "Revert to original" : "Create cutout"}
                     >
-                        {processingItemId === canvasItem.instanceId ? <Sparkles className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
+                        {processingItemId === canvasItem.instanceId ? <Sparkles className="h-4 w-4 animate-spin" /> : (hasCutout ? <Undo className="h-4 w-4" /> : <Scissors className="h-4 w-4" />)}
                     </Button>
                     <Button
                         variant="destructive"
@@ -380,7 +397,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                     )}
                 </div>
             </Rnd>
-        ))}
+        )})}
          {items.length === 0 && !isOver && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <p className="text-muted-foreground text-lg">Drop clothing items here to start building your outfit!</p>

@@ -3,6 +3,7 @@ export interface ClothingItem {
   name: string;
   category: string;
   photoDataUri: string;
+  originalPhotoDataUri?: string;
   tags?: string[];
   "data-ai-hint"?: string;
 }

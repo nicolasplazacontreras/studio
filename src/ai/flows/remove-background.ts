@@ -38,7 +38,7 @@ const removeBackgroundFlow = ai.defineFlow(
         { text: `You are an expert digital artist creating assets for a fashion collage. Given this image of a clothing item, create a new image that looks like a "cutout" from a fashion magazine.
 First, perfectly isolate the clothing item from its background.
 Then, give the isolated item a slightly irregular, thick white border, making it look as if it were carefully cut out with scissors.
-The final output must be a PNG image with a transparent background outside of the white border. Do not alter the clothing item itself.` }
+The final output must be a PNG image with a fully transparent background outside of the white border. Do not alter the clothing item itself.` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
