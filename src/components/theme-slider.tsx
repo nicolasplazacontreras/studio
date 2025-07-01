@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Palette } from 'lucide-react';
+import { Sun } from 'lucide-react';
 import { Label } from './ui/label';
 
 // Define light theme HSL values
@@ -117,7 +117,7 @@ export function ThemeSlider() {
     <Popover>
         <PopoverTrigger asChild>
             <Button variant="ghost" size="icon">
-                <Palette className="h-[1.2rem] w-[1.2rem]" />
+                <Sun className="h-[1.2rem] w-[1.2rem]" />
                 <span className="sr-only">Change Theme</span>
             </Button>
         </PopoverTrigger>

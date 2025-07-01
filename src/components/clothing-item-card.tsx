@@ -32,8 +32,8 @@ export function ClothingItemCard({ item, onDelete, onEdit }: ClothingItemCardPro
           data-ai-hint={item['data-ai-hint']}
           className="aspect-square w-full rounded-md object-cover"
         />
-        <div className="absolute inset-0 bg-black/10 rounded-md" />
-        <p className="absolute bottom-2 left-2 text-sm font-medium text-white drop-shadow-md">
+        <div className="absolute inset-0 rounded-md bg-black/50 opacity-0 transition-opacity group-hover:opacity-100" />
+        <p className="absolute bottom-2 left-2 text-sm font-medium text-white drop-shadow-md opacity-0 transition-opacity group-hover:opacity-100">
           {item.name}
         </p>
         <Button
