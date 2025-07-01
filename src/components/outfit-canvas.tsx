@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, Eye, RefreshCw, Replace, Loader2 } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, RefreshCw, Replace, Loader2, Ellipsis, SendToBack, Undo2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -148,6 +148,16 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
         onItemUpdate(updatedItem);
         toast({ title: "Reverted to Original" });
     }
+  };
+
+  const handleSendToBack = (instanceId: string) => {
+    const minZIndex = Math.min(0, ...items.map(i => i.zIndex || 0));
+    setItems(items.map(item => 
+        item.instanceId === instanceId 
+            ? { ...item, zIndex: minZIndex - 1 } 
+            : item
+    ));
+    toast({ title: "Item sent to back" });
   };
   
   const handleAiAction = async (canvasItem: CanvasItem, action: 'cutout' | 'remove') => {
@@ -335,6 +345,18 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
         }
     };
 
+    const handleRemoveMask = () => {
+        if (!refiningItem) return;
+        const updatedItem: ClothingItem = {
+            ...refiningItem.item,
+            maskDataUri: undefined,
+            lastAiAction: undefined,
+        };
+        onItemUpdate(updatedItem);
+        setRefiningItemInstanceId(null);
+        toast({ title: "Mask Removed" });
+    };
+
   return (
     <div className="flex flex-1 flex-col bg-muted/30 p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
@@ -406,7 +428,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                   </DialogDescription>
               </DialogHeader>
               {refiningItem?.item.maskDataUri && <Image src={refiningItem.item.maskDataUri} alt="Mask preview" width={512} height={512} className="rounded-md mx-auto bg-gray-200" />}
-              <DialogFooter>
+              <DialogFooter className="gap-2 flex-wrap sm:justify-end">
                   <Button variant="outline" onClick={() => setRefiningItemInstanceId(null)} disabled={!!isProcessingMask}>Close</Button>
                   <Button onClick={handleEliminateDetail} disabled={!!isProcessingMask}>
                       {isProcessingMask === 'eliminate' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
@@ -420,6 +442,10 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                       {isProcessingMask === 'regenerate' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                       Regenerate
                   </Button>
+                   <Button onClick={handleRemoveMask} disabled={!!isProcessingMask} variant="destructive">
+                        <Undo2 className="mr-2 h-4 w-4" />
+                        Start Again
+                    </Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>
@@ -450,14 +476,14 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             if (canvasItem.item.maskDataUri) {
                 const style = imageStyle as any;
                 style.maskImage = `url(${canvasItem.item.maskDataUri})`;
-                style.maskMode = 'luminance';
-                style.maskSize = 'cover';
-                style.maskRepeat = 'no-repeat';
-                style.maskPosition = 'center';
                 style.WebkitMaskImage = `url(${canvasItem.item.maskDataUri})`;
+                style.maskMode = 'luminance';
                 style.WebkitMaskMode = 'luminance';
+                style.maskSize = 'cover';
                 style.WebkitMaskSize = 'cover';
+                style.maskRepeat = 'no-repeat';
                 style.WebkitMaskRepeat = 'no-repeat';
+                style.maskPosition = 'center';
                 style.WebkitMaskPosition = 'center';
             }
 
@@ -509,8 +535,8 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                                 disabled={!!processingItemId}
                                 onClick={e => e.stopPropagation()}
                             >
-                                {processingItemId === canvasItem.instanceId ? <Sparkles className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                                <span className="sr-only">AI Image Tools</span>
+                                {processingItemId === canvasItem.instanceId ? <Sparkles className="h-4 w-4 animate-spin" /> : <Ellipsis className="h-4 w-4" />}
+                                <span className="sr-only">Item Options</span>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent onClick={e => e.stopPropagation()} side="right" align="start">
@@ -522,9 +548,13 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                                 <ImageIcon className="mr-2 h-4 w-4" />
                                 <span>Remove Background</span>
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={() => handleSendToBack(canvasItem.instanceId)}>
+                                <SendToBack className="mr-2 h-4 w-4" />
+                                <span>Send to Back</span>
+                            </DropdownMenuItem>
                             {hasAlteredImage && (
                                 <>
-                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem onSelect={() => handleRevert(canvasItem)}>
                                         <Undo className="mr-2 h-4 w-4" />
                                         <span>Revert to Original</span>
@@ -547,7 +577,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                                             setRefiningItemInstanceId(canvasItem.instanceId);
                                         }}
                                     >
-                                        <Eye className="h-4 w-4" />
+                                        <Scissors className="h-4 w-4" />
                                         <span className="sr-only">Refine Mask</span>
                                     </Button>
                                 </TooltipTrigger>
