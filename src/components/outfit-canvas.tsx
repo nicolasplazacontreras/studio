@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, RefreshCw, Replace, Loader2, Ellipsis, SendToBack, Undo2, Layers } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, RefreshCw, Replace, Loader2, Ellipsis, SendToBack, Undo2, Layers, Crop } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -55,6 +55,9 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
   const [keepLayersOrder, setKeepLayersOrder] = useState(false);
 
+  const [isSelectingForExport, setIsSelectingForExport] = useState(false);
+  const [exportSelectionBox, setExportSelectionBox] = useState({ width: 400, height: 400, x: 100, y: 100 });
+
   const refiningItem = items.find(item => item.instanceId === refiningItemInstanceId);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -91,7 +94,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
     setIsOver(false);
   };
 
-  const handleSimpleDownload = async () => {
+  const handleExportFullCanvas = async () => {
     if (!canvasRef.current) return;
     if (items.length === 0) {
         toast({ variant: "destructive", title: "Canvas is empty" });
@@ -106,6 +109,73 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
         link.download = `wrdrobe-outfit-canvas-${Date.now()}.jpg`;
         link.click();
     } catch (error) {
+        toast({ variant: "destructive", title: "Export Failed" });
+    } finally {
+        setIsExporting(false);
+    }
+  };
+
+  const handleExportSelection = async () => {
+    if (!canvasRef.current) return;
+    setIsExporting(true);
+    toast({ title: "Exporting selection..." });
+
+    try {
+        const fullCanvasDataUrl = await toJpeg(canvasRef.current, { 
+            quality: 1, 
+            style: { background: 'white' },
+            filter: (node) => {
+                // Exclude the selection UI from the final image
+                if (node.classList && typeof node.classList.contains === 'function') {
+                    return !node.classList.contains('export-selection-ui');
+                }
+                return true;
+            }
+         });
+        
+        const image = new window.Image();
+        image.src = fullCanvasDataUrl;
+        image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = exportSelectionBox.width;
+            canvas.height = exportSelectionBox.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                 toast({ variant: "destructive", title: "Export Failed", description: "Could not create image context." });
+                 setIsExporting(false);
+                 setIsSelectingForExport(false);
+                 return;
+            }
+            
+            ctx.drawImage(
+                image,
+                exportSelectionBox.x,
+                exportSelectionBox.y,
+                exportSelectionBox.width,
+                exportSelectionBox.height,
+                0,
+                0,
+                exportSelectionBox.width,
+                exportSelectionBox.height
+            );
+            
+            const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            
+            const link = document.createElement('a');
+            link.href = croppedDataUrl;
+            link.download = `wrdrobe-selection-${Date.now()}.jpg`;
+            link.click();
+
+            toast({ title: "Export successful!" });
+            setIsSelectingForExport(false);
+        }
+        image.onerror = () => {
+            toast({ variant: "destructive", title: "Export Failed", description: "Could not load image for cropping." });
+            setIsSelectingForExport(false);
+        }
+
+    } catch (error) {
+        console.error(error);
         toast({ variant: "destructive", title: "Export Failed" });
     } finally {
         setIsExporting(false);
@@ -197,7 +267,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   };
 
   const handleMouseDownOnCanvas = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target !== canvasRef.current) return;
+    if (e.target !== canvasRef.current || isSelectingForExport) return;
     e.preventDefault();
     
     const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -379,7 +449,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled={isSelectingForExport}>
                     <Download className="mr-2 h-4 w-4" />
                     Download
                 </Button>
@@ -389,9 +459,14 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                     <Sparkles className="mr-2 h-4 w-4" />
                     Generate with AI
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSimpleDownload} disabled={isExporting}>
-                    {isExporting ? <Sparkles className="mr-2 h-4 w-4 animate-spin" /> : <HardDriveDownload className="mr-2 h-4 w-4" />}
-                    {isExporting ? 'Exporting...' : 'Export as JPG'}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportFullCanvas} disabled={isExporting}>
+                    <HardDriveDownload className="mr-2 h-4 w-4" />
+                    Export full canvas
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsSelectingForExport(true)} disabled={isExporting}>
+                    <Crop className="mr-2 h-4 w-4" />
+                    Export selection
                 </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -423,7 +498,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                 </Button>
             </DialogContent>
           </Dialog>
-          <Button variant="destructive" size="sm" onClick={() => setItems([])}>
+          <Button variant="destructive" size="sm" onClick={() => setItems([])} disabled={isSelectingForExport}>
             <Trash2 className="mr-2 h-4 w-4" />
             Clear
           </Button>
@@ -508,6 +583,32 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             }}
           />
         )}
+        {isSelectingForExport && (
+            <div className="absolute inset-0 z-20 export-selection-ui">
+                <div className="absolute inset-0 bg-black/70" />
+                <Rnd
+                    style={{ border: '2px dashed white' }}
+                    bounds="parent"
+                    size={{ width: exportSelectionBox.width, height: exportSelectionBox.height }}
+                    position={{ x: exportSelectionBox.x, y: exportSelectionBox.y }}
+                    onDragStop={(e, d) => setExportSelectionBox(prev => ({ ...prev, x: d.x, y: d.y }))}
+                    onResizeStop={(e, direction, ref, delta, position) => {
+                        setExportSelectionBox({
+                            width: ref.offsetWidth,
+                            height: ref.offsetHeight,
+                            ...position,
+                        });
+                    }}
+                />
+                <div className="absolute bottom-4 right-4 z-30 flex gap-2">
+                    <Button variant="secondary" onClick={() => setIsSelectingForExport(false)} disabled={isExporting}>Cancel</Button>
+                    <Button onClick={handleExportSelection} disabled={isExporting}>
+                        {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Crop className="mr-2 h-4 w-4" />}
+                        {isExporting ? 'Exporting...' : 'Export Selection'}
+                    </Button>
+                </div>
+            </div>
+        )}
         {items.map(canvasItem => {
             const hasAlteredImage = !!canvasItem.item.originalPhotoDataUri;
             const imageStyle: React.CSSProperties = { objectFit: 'cover' };
@@ -552,6 +653,8 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                 }}
                 bounds="parent"
                 className="group"
+                disableDragging={isSelectingForExport}
+                enableResizing={!isSelectingForExport}
             >
                 <div 
                   className={`w-full h-full relative border-2 rounded-md transition-colors ${selectedInstanceIds.includes(canvasItem.instanceId) ? 'border-primary' : 'border-transparent group-hover:border-primary group-hover:border-dashed'}`}
@@ -645,7 +748,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                 </div>
             </Rnd>
         )})}
-         {items.length === 0 && !isOver && (
+         {items.length === 0 && !isOver && !isSelectingForExport && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <p className="text-muted-foreground text-lg">Drop clothing items here to start building your outfit!</p>
             </div>
