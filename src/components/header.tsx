@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from './ui/button';
-import { Download, GalleryHorizontal } from 'lucide-react';
+import { GalleryHorizontal } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import {
   Dialog,
@@ -16,7 +16,6 @@ import {
 import OutfitGalleryClient from './outfit-gallery-client';
 import { ScrollArea } from './ui/scroll-area';
 import { type CanvasItem } from '@/lib/types';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface HeaderProps {
   onLoadOutfit: (items: CanvasItem[]) => void;
@@ -58,20 +57,6 @@ export default function Header({ onLoadOutfit }: HeaderProps) {
           </DialogContent>
         </Dialog>
         <ThemeToggle />
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    {/* The button is disabled because this is a function of the IDE */}
-                    <Button variant="ghost" size="icon" disabled>
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Download Project ZIP</span>
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>Use the "Export ZIP" feature in the Studio IDE to download the project.</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
       </nav>
     </header>
   );
