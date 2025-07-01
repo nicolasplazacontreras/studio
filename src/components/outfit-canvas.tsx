@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2 } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, Eye } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -41,6 +41,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const [processingItemId, setProcessingItemId] = useState<string | null>(null);
+  const [viewingMask, setViewingMask] = useState<string | null>(null);
 
   const [selectedInstanceIds, setSelectedInstanceIds] = useState<string[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -311,6 +312,17 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
           </Button>
         </div>
       </div>
+       <Dialog open={!!viewingMask} onOpenChange={(isOpen) => !isOpen && setViewingMask(null)}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Mask Preview</DialogTitle>
+                  <DialogDescription>
+                      This is the black and white mask the AI generated. White areas are visible, black areas are hidden.
+                  </DialogDescription>
+              </DialogHeader>
+              {viewingMask && <Image src={viewingMask} alt="Mask preview" width={512} height={512} className="rounded-md mx-auto bg-gray-200" />}
+          </DialogContent>
+      </Dialog>
       <div 
         ref={canvasRef}
         className={`flex-1 relative bg-background rounded-lg border overflow-hidden transition-colors ${isOver ? 'bg-accent' : ''}`}
@@ -421,6 +433,22 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    
+                    {canvasItem.item.maskDataUri && (
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="absolute -bottom-3 -left-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingMask(canvasItem.item.maskDataUri!);
+                            }}
+                        >
+                            <Eye className="h-4 w-4" />
+                            <span className="sr-only">Check Mask</span>
+                        </Button>
+                    )}
+
                     <Button
                         variant="destructive"
                         size="icon"
