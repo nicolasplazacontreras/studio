@@ -35,7 +35,12 @@ const removeBackgroundFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: [
         { media: { url: input.photoDataUri } },
-        { text: `Your task is to create a precise segmentation mask. Analyze the image to identify the main subject. Create a new black and white mask image. In this mask, the area of the subject must be pure solid white (#FFFFFF). Everything else, the entire background, must be pure solid black (#000000). The output MUST be a PNG file.` }
+        { text: `Your task is to create a precise segmentation mask. Follow these steps exactly:
+1. Analyze the image to identify the main subject, separating it from the background.
+2. Create a new image where the entire background is filled with pure solid white (#FFFFFF).
+3. Fill the entire area of the main subject with pure solid black (#000000). Ensure there are no details or gradients within the subject's area; it must be a solid black silhouette.
+4. Invert the colors of the image you just created. The final result must be an image where the subject is pure solid white (#FFFFFF) and the background is pure solid black (#000000).
+The output MUST be a PNG file.` }
       ],
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
