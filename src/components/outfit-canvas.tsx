@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, RefreshCw, Replace, Loader2, Ellipsis, SendToBack, Undo2 } from 'lucide-react';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, RefreshCw, Replace, Loader2, Ellipsis, SendToBack, Undo2, Layers } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
@@ -17,6 +17,7 @@ import { toJpeg } from 'html-to-image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 import { Rnd } from 'react-rnd';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { LayersPanel } from './layers-panel';
 
 interface OutfitCanvasProps {
   items: CanvasItem[];
@@ -50,6 +51,8 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   const [selectedInstanceIds, setSelectedInstanceIds] = useState<string[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState<{ x: number, y: number, width: number, height: number, startX: number, startY: number } | null>(null);
+
+  const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
 
   const refiningItem = items.find(item => item.instanceId === refiningItemInstanceId);
 
@@ -153,7 +156,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   const handleSendToBack = (instanceId: string) => {
     if (items.length < 2) return;
     
-    const minZIndex = Math.min(...items.map(i => i.zIndex || 0));
+    const minZIndex = Math.min(...items.filter(i => i.instanceId !== instanceId).map(i => i.zIndex || 0));
     setItems(items.map(item => 
         item.instanceId === instanceId 
             ? { ...item, zIndex: minZIndex - 1 } 
@@ -365,6 +368,12 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Outfit Canvas</h2>
         <div className="flex items-center gap-2">
+           {items.length >= 2 && (
+            <Button variant="outline" size="sm" onClick={() => setIsLayersPanelOpen(true)}>
+              <Layers className="mr-2 h-4 w-4" />
+              Edit Layers
+            </Button>
+           )}
            <Button variant="outline" size="sm" onClick={onSave}>
             <Save className="mr-2 h-4 w-4" />
             Save
@@ -452,6 +461,12 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
               </DialogFooter>
           </DialogContent>
       </Dialog>
+      <LayersPanel
+        isOpen={isLayersPanelOpen}
+        onOpenChange={setIsLayersPanelOpen}
+        items={items}
+        setItems={setItems}
+      />
       <div 
         ref={canvasRef}
         className={`flex-1 relative bg-background rounded-lg border overflow-hidden transition-colors ${isOver ? 'bg-accent' : ''}`}
