@@ -6,6 +6,7 @@ import WardrobeSidebar from '@/components/wardrobe-sidebar';
 import OutfitCanvas from '@/components/outfit-canvas';
 import Header from '@/components/header';
 import { useToast } from '@/hooks/use-toast';
+import { SaveOutfitDialog } from '@/components/save-outfit-dialog';
 
 const initialWardrobe: ClothingItem[] = [
   { id: '1', name: 'White T-Shirt', category: 'Tops', photoDataUri: 'https://placehold.co/400x400.png', tags: ['summer', 'casual', 'basic'], "data-ai-hint": "white t-shirt" },
@@ -25,6 +26,7 @@ export default function Home() {
   const [wardrobe, setWardrobe] = useState<ClothingItem[]>([]);
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -79,7 +81,7 @@ export default function Home() {
     });
   };
 
-  const handleSaveOutfit = () => {
+  const handleSaveClick = () => {
     if (canvasItems.length === 0) {
       toast({
         variant: "destructive",
@@ -88,12 +90,16 @@ export default function Home() {
       });
       return;
     }
+    setIsSaveDialogOpen(true);
+  };
+  
+  const handleConfirmSave = (name: string) => {
     const savedOutfits: Outfit[] = JSON.parse(localStorage.getItem('wrdrobe_outfits') || '[]');
-    const newOutfit: Outfit = { id: Date.now().toString(), items: canvasItems };
+    const newOutfit: Outfit = { id: Date.now().toString(), name, items: canvasItems };
     localStorage.setItem('wrdrobe_outfits', JSON.stringify([newOutfit, ...savedOutfits]));
     toast({
       title: "Outfit Saved!",
-      description: "Your new outfit has been saved to your gallery.",
+      description: `"${name}" has been saved to your gallery.`,
     });
   };
   
@@ -130,10 +136,15 @@ export default function Home() {
         <OutfitCanvas
           items={canvasItems}
           setItems={setCanvasItems}
-          onSave={handleSaveOutfit}
+          onSaveClick={handleSaveClick}
           onItemUpdate={handleUpdateItem}
         />
       </main>
+      <SaveOutfitDialog 
+        isOpen={isSaveDialogOpen}
+        onOpenChange={setIsSaveDialogOpen}
+        onSave={handleConfirmSave}
+      />
     </div>
   );
 }

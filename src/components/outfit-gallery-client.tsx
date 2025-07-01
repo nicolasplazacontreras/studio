@@ -97,6 +97,9 @@ export default function OutfitGalleryClient({ onLoadOutfit }: OutfitGalleryClien
               })}
             </div>
           </CardContent>
+          <div className="absolute bottom-0 w-full p-4 text-white bg-gradient-to-t from-black/60 to-transparent pointer-events-none">
+            <h3 className="font-semibold text-lg drop-shadow-md truncate">{outfit.name || 'Untitled Outfit'}</h3>
+          </div>
           <Button
             size="icon"
             variant="destructive"

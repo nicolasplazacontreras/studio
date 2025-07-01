@@ -23,5 +23,6 @@ export interface CanvasItem {
 
 export interface Outfit {
   id: string;
+  name: string;
   items: CanvasItem[]; // An outfit is a collection of items on the canvas
 }

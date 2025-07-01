@@ -20,7 +20,7 @@ import { LayersPanel } from './layers-panel';
 interface OutfitCanvasProps {
   items: CanvasItem[];
   setItems: (items: CanvasItem[]) => void;
-  onSave: () => void;
+  onSaveClick: () => void;
   onItemUpdate: (item: ClothingItem) => void;
 }
 
@@ -31,7 +31,7 @@ const checkIntersection = (rect1: DOMRect, rect2: DOMRect) => {
            rect2.bottom < rect1.top);
 };
 
-export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: OutfitCanvasProps) {
+export default function OutfitCanvas({ items, setItems, onSaveClick, onItemUpdate }: OutfitCanvasProps) {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<{[key: string]: HTMLDivElement}>({});
@@ -408,7 +408,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Outfit Canvas</h2>
         <div className="flex items-center gap-2">
-           <Button variant="outline" size="sm" onClick={onSave}>
+           <Button variant="outline" size="sm" onClick={onSaveClick}>
             <Save className="mr-2 h-4 w-4" />
             Save
           </Button>
