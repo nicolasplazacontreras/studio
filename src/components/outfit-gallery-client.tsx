@@ -18,9 +18,6 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 
-const CANVAS_WIDTH = 1200;
-const CANVAS_HEIGHT = 1200;
-
 interface OutfitGalleryClientProps {
   onLoadOutfit: (items: CanvasItem[]) => void;
 }
@@ -91,79 +88,117 @@ export default function OutfitGalleryClient({ onLoadOutfit }: OutfitGalleryClien
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {savedOutfits.map((outfit) => (
-          <Card 
-            key={outfit.id} 
-            className="group relative overflow-hidden cursor-pointer hover:border-primary transition-colors"
-            onClick={() => onLoadOutfit(outfit.items)}
-          >
-            <CardContent className="p-0 aspect-square relative bg-gray-100 dark:bg-muted/40">
-              <div className="absolute w-full h-full">
-                {outfit.items.map((canvasItem) => {
-                  const containerStyle: React.CSSProperties = {
-                    left: `${(canvasItem.x / CANVAS_WIDTH) * 100}%`,
-                    top: `${(canvasItem.y / CANVAS_HEIGHT) * 100}%`,
-                    width: `${(canvasItem.width / CANVAS_WIDTH) * 100}%`,
-                    height: `${(canvasItem.height / CANVAS_HEIGHT) * 100}%`,
-                    zIndex: canvasItem.zIndex,
-                  };
+        {savedOutfits.map((outfit) => {
+          if (!outfit.items || outfit.items.length === 0) {
+            return null; // Don't render empty outfits
+          }
 
-                  const imageStyle: React.CSSProperties = { objectFit: 'cover' };
-                  if (canvasItem.item.maskDataUri) {
-                      const style = imageStyle as any;
-                      style.maskImage = `url(${canvasItem.item.maskDataUri})`;
-                      style.maskMode = 'luminance';
-                      style.maskSize = 'cover';
-                      style.maskRepeat = 'no-repeat';
-                      style.maskPosition = 'center';
-                      style.WebkitMaskImage = `url(${canvasItem.item.maskDataUri})`;
-                      style.WebkitMaskMode = 'luminance';
-                      style.WebkitMaskSize = 'cover';
-                      style.WebkitMaskRepeat = 'no-repeat';
-                      style.WebkitMaskPosition = 'center';
-                  }
-                  
-                  return (
-                    <div
-                      key={canvasItem.instanceId}
-                      className="absolute"
-                      style={containerStyle}
-                    >
-                      <Image
-                        src={canvasItem.item.photoDataUri}
-                        alt={canvasItem.item.name}
-                        fill
-                        className="drop-shadow-md"
-                        style={imageStyle}
-                      />
-                    </div>
-                  );
-                })}
+          // --- Bounding box calculation ---
+          const minX = Math.min(...outfit.items.map(i => i.x));
+          const minY = Math.min(...outfit.items.map(i => i.y));
+          const maxX = Math.max(...outfit.items.map(i => i.x + i.width));
+          const maxY = Math.max(...outfit.items.map(i => i.y + i.height));
+
+          const outfitWidth = maxX - minX;
+          const outfitHeight = maxY - minY;
+          
+          // Add some padding
+          const PADDING_PERCENTAGE = 0.15; // 15% padding on each side
+          const hPadding = outfitWidth * PADDING_PERCENTAGE;
+          const vPadding = outfitHeight * PADDING_PERCENTAGE;
+          
+          const viewBoxX = minX - hPadding;
+          const viewBoxY = minY - vPadding;
+          const viewBoxWidth = outfitWidth + (hPadding * 2);
+          const viewBoxHeight = outfitHeight + (vPadding * 2);
+          
+          // Make the viewBox square to fit the container
+          const size = Math.max(viewBoxWidth, viewBoxHeight);
+          const centerX = viewBoxX + viewBoxWidth / 2;
+          const centerY = viewBoxY + viewBoxHeight / 2;
+          
+          const finalViewBox = {
+              x: centerX - size / 2,
+              y: centerY - size / 2,
+              width: size,
+              height: size,
+          };
+          // --- End bounding box calculation ---
+
+          return (
+            <Card 
+              key={outfit.id} 
+              className="group relative overflow-hidden cursor-pointer hover:border-primary transition-colors"
+              onClick={() => onLoadOutfit(outfit.items)}
+            >
+              <CardContent className="p-0 aspect-square relative bg-gray-100 dark:bg-muted/40">
+                <div className="absolute w-full h-full">
+                  {outfit.items.map((canvasItem) => {
+                    const containerStyle: React.CSSProperties = {
+                      left: `${((canvasItem.x - finalViewBox.x) / finalViewBox.width) * 100}%`,
+                      top: `${((canvasItem.y - finalViewBox.y) / finalViewBox.height) * 100}%`,
+                      width: `${(canvasItem.width / finalViewBox.width) * 100}%`,
+                      height: `${(canvasItem.height / finalViewBox.height) * 100}%`,
+                      zIndex: canvasItem.zIndex,
+                    };
+
+                    const imageStyle: React.CSSProperties = { objectFit: 'cover' };
+                    if (canvasItem.item.maskDataUri) {
+                        const style = imageStyle as any;
+                        style.maskImage = `url(${canvasItem.item.maskDataUri})`;
+                        style.maskMode = 'luminance';
+                        style.maskSize = 'cover';
+                        style.maskRepeat = 'no-repeat';
+                        style.maskPosition = 'center';
+                        style.WebkitMaskImage = `url(${canvasItem.item.maskDataUri})`;
+                        style.WebkitMaskMode = 'luminance';
+                        style.WebkitMaskSize = 'cover';
+                        style.WebkitMaskRepeat = 'no-repeat';
+                        style.WebkitMaskPosition = 'center';
+                    }
+                    
+                    return (
+                      <div
+                        key={canvasItem.instanceId}
+                        className="absolute"
+                        style={containerStyle}
+                      >
+                        <Image
+                          src={canvasItem.item.photoDataUri}
+                          alt={canvasItem.item.name}
+                          fill
+                          className="drop-shadow-md"
+                          style={imageStyle}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+              <div className="absolute bottom-0 w-full p-4 text-white bg-gradient-to-t from-black/60 to-transparent pointer-events-none">
+                <h3 className="font-semibold text-lg drop-shadow-md truncate">{outfit.name || 'Untitled Outfit'}</h3>
               </div>
-            </CardContent>
-            <div className="absolute bottom-0 w-full p-4 text-white bg-gradient-to-t from-black/60 to-transparent pointer-events-none">
-              <h3 className="font-semibold text-lg drop-shadow-md truncate">{outfit.name || 'Untitled Outfit'}</h3>
-            </div>
-            <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 hover:bg-background"
-                onClick={(e) => handleEditClick(e, outfit)}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="destructive"
-                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => handleDeleteOutfit(e, outfit.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </Card>
-        ))}
+              <div className="absolute top-2 right-2 flex flex-col gap-2 z-10">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 hover:bg-background"
+                  onClick={(e) => handleEditClick(e, outfit)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => handleDeleteOutfit(e, outfit.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       <Dialog open={!!editingOutfit} onOpenChange={(isOpen) => !isOpen && setEditingOutfit(null)}>
