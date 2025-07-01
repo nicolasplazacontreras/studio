@@ -6,15 +6,20 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { type CanvasItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { GripVertical } from 'lucide-react';
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
+import { ScrollArea } from './ui/scroll-area';
 
 interface LayersPanelProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   items: CanvasItem[];
   setItems: (items: CanvasItem[]) => void;
+  keepLayersOrder: boolean;
+  onKeepLayersOrderChange: (checked: boolean) => void;
 }
 
-export function LayersPanel({ isOpen, onOpenChange, items, setItems }: LayersPanelProps) {
+export function LayersPanel({ isOpen, onOpenChange, items, setItems, keepLayersOrder, onKeepLayersOrderChange }: LayersPanelProps) {
   const [draggedItemInstanceId, setDraggedItemInstanceId] = useState<string | null>(null);
 
   const sortedItems = useMemo(() => {
@@ -62,40 +67,54 @@ export function LayersPanel({ isOpen, onOpenChange, items, setItems }: LayersPan
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-80 p-0">
-        <SheetHeader className="p-4 border-b">
+      <SheetContent side="left" className="w-80 p-0 flex flex-col">
+        <SheetHeader className="p-4 border-b shrink-0">
           <SheetTitle>Edit Layers</SheetTitle>
           <SheetDescription>
             Drag and drop items to reorder them on the canvas. The top item is the front-most layer.
           </SheetDescription>
         </SheetHeader>
-        <div className="p-4 space-y-2 overflow-y-auto">
-            {sortedItems.map((canvasItem) => (
-                <div
-                    key={canvasItem.instanceId}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, canvasItem.instanceId)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, canvasItem.instanceId)}
-                    onDragEnd={handleDragEnd}
-                    className={cn(
-                        "flex items-center p-2 rounded-md border bg-card cursor-grab active:cursor-grabbing transition-all",
-                        draggedItemInstanceId === canvasItem.instanceId && 'opacity-50 scale-105 shadow-lg'
-                    )}
-                >
-                    <GripVertical className="h-5 w-5 text-muted-foreground mr-2 shrink-0"/>
-                    <Image
-                        src={canvasItem.item.photoDataUri}
-                        alt={canvasItem.item.name}
-                        width={40}
-                        height={40}
-                        className="h-10 w-10 object-cover rounded-sm mr-4"
-                    />
-                    <span className="font-medium text-sm truncate flex-1">
-                        {canvasItem.item.name}
-                    </span>
-                </div>
-            ))}
+        <ScrollArea className="flex-1">
+            <div className="p-4 space-y-2">
+                {sortedItems.map((canvasItem) => (
+                    <div
+                        key={canvasItem.instanceId}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, canvasItem.instanceId)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, canvasItem.instanceId)}
+                        onDragEnd={handleDragEnd}
+                        className={cn(
+                            "flex items-center p-2 rounded-md border bg-card cursor-grab active:cursor-grabbing transition-all",
+                            draggedItemInstanceId === canvasItem.instanceId && 'opacity-50 scale-105 shadow-lg'
+                        )}
+                    >
+                        <GripVertical className="h-5 w-5 text-muted-foreground mr-2 shrink-0"/>
+                        <Image
+                            src={canvasItem.item.photoDataUri}
+                            alt={canvasItem.item.name}
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 object-cover rounded-sm mr-4"
+                        />
+                        <span className="font-medium text-sm truncate flex-1">
+                            {canvasItem.item.name}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </ScrollArea>
+        <div className="p-4 border-t shrink-0">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="keep-layers-order"
+              checked={keepLayersOrder}
+              onCheckedChange={onKeepLayersOrderChange}
+            />
+            <Label htmlFor="keep-layers-order" className="cursor-pointer">
+              Keep layers order
+            </Label>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

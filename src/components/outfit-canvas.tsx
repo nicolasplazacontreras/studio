@@ -53,6 +53,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   const [selectionBox, setSelectionBox] = useState<{ x: number, y: number, width: number, height: number, startX: number, startY: number } | null>(null);
 
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
+  const [keepLayersOrder, setKeepLayersOrder] = useState(false);
 
   const refiningItem = items.find(item => item.instanceId === refiningItemInstanceId);
 
@@ -269,8 +270,11 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
     } else if (!isSelected) {
         setSelectedInstanceIds([instanceId]);
     }
-    const maxZIndex = Math.max(0, ...items.map(i => i.zIndex || 0));
-    setItems(items.map(item => item.instanceId === instanceId ? { ...item, zIndex: maxZIndex + 1 } : item));
+
+    if (!keepLayersOrder) {
+      const maxZIndex = Math.max(0, ...items.map(i => i.zIndex || 0));
+      setItems(items.map(item => item.instanceId === instanceId ? { ...item, zIndex: maxZIndex + 1 } : item));
+    }
   };
   
     const invertImage = (dataUri: string): Promise<string> => {
@@ -466,6 +470,8 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
         onOpenChange={setIsLayersPanelOpen}
         items={items}
         setItems={setItems}
+        keepLayersOrder={keepLayersOrder}
+        onKeepLayersOrderChange={setKeepLayersOrder}
       />
       <div 
         ref={canvasRef}
