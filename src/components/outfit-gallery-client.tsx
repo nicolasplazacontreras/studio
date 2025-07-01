@@ -18,7 +18,7 @@ export default function OutfitGalleryClient() {
   useEffect(() => {
     const outfitsFromStorage = JSON.parse(localStorage.getItem('wrdrobe_outfits') || '[]');
     setSavedOutfits(outfitsFromStorage);
-  }, []);
+  }, [savedOutfits.length]);
 
   const handleDeleteOutfit = (outfitId: string) => {
     const newOutfits = savedOutfits.filter(outfit => outfit.id !== outfitId);
@@ -40,12 +40,12 @@ export default function OutfitGalleryClient() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
       {savedOutfits.map((outfit) => (
         <Card key={outfit.id} className="group relative overflow-hidden">
           <CardContent className="p-0 aspect-square relative bg-gray-100 dark:bg-muted/40">
             <div className="absolute w-full h-full">
-              {outfit.items.map((canvasItem) => {
+              {Array.isArray(outfit.items) && outfit.items.map((canvasItem) => {
                 const containerStyle: React.CSSProperties = {
                   left: `${(canvasItem.x / CANVAS_WIDTH) * 100}%`,
                   top: `${(canvasItem.y / CANVAS_HEIGHT) * 100}%`,
