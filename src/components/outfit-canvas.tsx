@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateOutfitImage } from '@/ai/flows/generate-outfit-image';
 import { removeBackground } from '@/ai/flows/remove-background';
 import { createCutout } from '@/ai/flows/create-cutout';
+import { refineMask } from '@/ai/flows/refine-mask';
 import { toJpeg } from 'html-to-image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 import { Rnd } from 'react-rnd';
@@ -44,7 +45,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   const [processingItemId, setProcessingItemId] = useState<string | null>(null);
   
   const [refiningItemInstanceId, setRefiningItemInstanceId] = useState<string | null>(null);
-  const [isRefiningMask, setIsRefiningMask] = useState(false);
+  const [isProcessingMask, setIsProcessingMask] = useState<false | 'invert' | 'regenerate' | 'eliminate'>(false);
 
   const [selectedInstanceIds, setSelectedInstanceIds] = useState<string[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -288,7 +289,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
     const handleInvertMask = async () => {
         if (!refiningItem || !refiningItem.item.maskDataUri) return;
         
-        setIsRefiningMask(true);
+        setIsProcessingMask('invert');
         try {
             const invertedMaskUri = await invertImage(refiningItem.item.maskDataUri);
             const updatedItem: ClothingItem = {
@@ -301,15 +302,37 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             console.error("Failed to invert mask:", error);
             toast({ variant: 'destructive', title: 'Invert Failed' });
         } finally {
-            setIsRefiningMask(false);
+            setIsProcessingMask(false);
         }
     };
 
     const handleRegenerateMask = async () => {
         if (!refiningItem || !refiningItem.item.lastAiAction) return;
-        setIsRefiningMask(true);
+        setIsProcessingMask('regenerate');
         await handleAiAction(refiningItem, refiningItem.item.lastAiAction);
-        setIsRefiningMask(false);
+        setIsProcessingMask(false);
+    };
+
+    const handleEliminateDetail = async () => {
+        if (!refiningItem || !refiningItem.item.maskDataUri) return;
+
+        setIsProcessingMask('eliminate');
+        toast({ title: "Eliminating details...", description: "This might take a moment." });
+
+        try {
+            const result = await refineMask({ maskDataUri: refiningItem.item.maskDataUri });
+            const updatedItem: ClothingItem = {
+                ...refiningItem.item,
+                maskDataUri: result.refinedMaskDataUri,
+            };
+            onItemUpdate(updatedItem);
+            toast({ title: "Details eliminated!" });
+        } catch (error) {
+            console.error("Failed to eliminate detail:", error);
+            toast({ variant: 'destructive', title: 'Refinement Failed', description: 'Could not process the mask.' });
+        } finally {
+            setIsProcessingMask(false);
+        }
     };
 
   return (
@@ -379,18 +402,22 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
               <DialogHeader>
                   <DialogTitle>Refine Mask</DialogTitle>
                   <DialogDescription>
-                      You can regenerate the mask or invert its colors if the wrong parts are hidden.
+                    You can regenerate the mask, invert its colors, or eliminate details if the mask isn't perfect.
                   </DialogDescription>
               </DialogHeader>
               {refiningItem?.item.maskDataUri && <Image src={refiningItem.item.maskDataUri} alt="Mask preview" width={512} height={512} className="rounded-md mx-auto bg-gray-200" />}
               <DialogFooter>
-                  <Button variant="outline" onClick={() => setRefiningItemInstanceId(null)} disabled={isRefiningMask}>Close</Button>
-                  <Button onClick={handleInvertMask} disabled={isRefiningMask}>
-                      {isRefiningMask ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Replace className="mr-2 h-4 w-4" />}
+                  <Button variant="outline" onClick={() => setRefiningItemInstanceId(null)} disabled={!!isProcessingMask}>Close</Button>
+                  <Button onClick={handleEliminateDetail} disabled={!!isProcessingMask}>
+                      {isProcessingMask === 'eliminate' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                      Eliminate Detail
+                  </Button>
+                  <Button onClick={handleInvertMask} disabled={!!isProcessingMask}>
+                      {isProcessingMask === 'invert' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Replace className="mr-2 h-4 w-4" />}
                       Invert Colors
                   </Button>
-                  <Button onClick={handleRegenerateMask} disabled={isRefiningMask}>
-                      {isRefiningMask ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  <Button onClick={handleRegenerateMask} disabled={!!isProcessingMask}>
+                      {isProcessingMask === 'regenerate' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                       Regenerate
                   </Button>
               </DialogFooter>
