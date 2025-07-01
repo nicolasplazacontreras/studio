@@ -372,12 +372,6 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold">Outfit Canvas</h2>
         <div className="flex items-center gap-2">
-           {items.length >= 2 && (
-            <Button variant="outline" size="sm" onClick={() => setIsLayersPanelOpen(true)}>
-              <Layers className="mr-2 h-4 w-4" />
-              Edit Layers
-            </Button>
-           )}
            <Button variant="outline" size="sm" onClick={onSave}>
             <Save className="mr-2 h-4 w-4" />
             Save
@@ -483,6 +477,26 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
         onMouseMove={handleMouseMoveOnCanvas}
         onMouseUp={handleMouseUpOnCanvas}
       >
+        {items.length >= 2 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsLayersPanelOpen(true)}
+                    className="absolute top-2 right-2 z-10 h-8 w-8"
+                  >
+                    <Layers className="h-4 w-4" />
+                    <span className="sr-only">Edit Layers</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit Layers</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         {selectionBox && (
           <div
             className="absolute border-2 border-dashed border-primary bg-primary/20 pointer-events-none"
