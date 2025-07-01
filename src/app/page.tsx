@@ -27,6 +27,7 @@ export default function Home() {
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
 
   const { toast } = useToast();
 
@@ -38,10 +39,14 @@ export default function Home() {
       
       const savedCategories = localStorage.getItem('wrdrobe_categories');
       setCategories(savedCategories ? JSON.parse(savedCategories) : initialCategories);
+
+      const outfitsFromStorage = localStorage.getItem('wrdrobe_outfits');
+      setSavedOutfits(outfitsFromStorage ? JSON.parse(outfitsFromStorage) : []);
     } catch (error) {
       console.error("Failed to parse from localStorage", error);
       setWardrobe(initialWardrobe);
       setCategories(initialCategories);
+      setSavedOutfits([]);
     }
   }, []);
 
@@ -53,6 +58,21 @@ export default function Home() {
   useEffect(() => {
     if(categories.length > 0) localStorage.setItem('wrdrobe_categories', JSON.stringify(categories));
   }, [categories]);
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const outfitsFromStorage = localStorage.getItem('wrdrobe_outfits');
+      setSavedOutfits(outfitsFromStorage ? JSON.parse(outfitsFromStorage) : []);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleStorageChange);
+    };
+  }, []);
 
 
   const handleAddItem = (item: Omit<ClothingItem, 'id'>) => {
@@ -93,13 +113,31 @@ export default function Home() {
     setIsSaveDialogOpen(true);
   };
   
-  const handleConfirmSave = (name: string) => {
-    const savedOutfits: Outfit[] = JSON.parse(localStorage.getItem('wrdrobe_outfits') || '[]');
-    const newOutfit: Outfit = { id: Date.now().toString(), name, items: canvasItems };
-    localStorage.setItem('wrdrobe_outfits', JSON.stringify([newOutfit, ...savedOutfits]));
+  const handleConfirmSave = (saveDetails: { name: string, id?: string }) => {
+    let currentOutfits: Outfit[] = JSON.parse(localStorage.getItem('wrdrobe_outfits') || '[]');
+    let toastTitle = "Outfit Saved!";
+    let toastDescription = `"${saveDetails.name}" has been saved to your gallery.`;
+
+    if (saveDetails.id) {
+        currentOutfits = currentOutfits.map(outfit => 
+            outfit.id === saveDetails.id 
+                ? { id: saveDetails.id, name: saveDetails.name, items: canvasItems } 
+                : outfit
+        );
+        toastTitle = "Outfit Overwritten!";
+        toastDescription = `"${saveDetails.name}" has been updated.`;
+    } else {
+        const newOutfit: Outfit = { id: Date.now().toString(), name: saveDetails.name, items: canvasItems };
+        currentOutfits = [newOutfit, ...currentOutfits];
+    }
+    
+    const newOutfitsString = JSON.stringify(currentOutfits);
+    localStorage.setItem('wrdrobe_outfits', newOutfitsString);
+    setSavedOutfits(currentOutfits);
+
     toast({
-      title: "Outfit Saved!",
-      description: `"${name}" has been saved to your gallery.`,
+      title: toastTitle,
+      description: toastDescription,
     });
   };
   
@@ -144,6 +182,7 @@ export default function Home() {
         isOpen={isSaveDialogOpen}
         onOpenChange={setIsSaveDialogOpen}
         onSave={handleConfirmSave}
+        existingOutfits={savedOutfits}
       />
     </div>
   );
