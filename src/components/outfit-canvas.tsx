@@ -151,7 +151,9 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   };
 
   const handleSendToBack = (instanceId: string) => {
-    const minZIndex = Math.min(0, ...items.map(i => i.zIndex || 0));
+    if (items.length < 2) return;
+    
+    const minZIndex = Math.min(...items.map(i => i.zIndex || 0));
     setItems(items.map(item => 
         item.instanceId === instanceId 
             ? { ...item, zIndex: minZIndex - 1 } 
@@ -351,6 +353,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             ...refiningItem.item,
             maskDataUri: undefined,
             lastAiAction: undefined,
+            originalPhotoDataUri: undefined,
         };
         onItemUpdate(updatedItem);
         setRefiningItemInstanceId(null);
