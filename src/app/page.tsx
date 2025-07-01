@@ -30,11 +30,17 @@ export default function Home() {
 
   useEffect(() => {
     // Load data from localStorage
-    const savedWardrobe = localStorage.getItem('wrdrobe_wardrobe');
-    setWardrobe(savedWardrobe ? JSON.parse(savedWardrobe) : initialWardrobe);
-    
-    const savedCategories = localStorage.getItem('wrdrobe_categories');
-    setCategories(savedCategories ? JSON.parse(savedCategories) : initialCategories);
+    try {
+      const savedWardrobe = localStorage.getItem('wrdrobe_wardrobe');
+      setWardrobe(savedWardrobe ? JSON.parse(savedWardrobe) : initialWardrobe);
+      
+      const savedCategories = localStorage.getItem('wrdrobe_categories');
+      setCategories(savedCategories ? JSON.parse(savedCategories) : initialCategories);
+    } catch (error) {
+      console.error("Failed to parse from localStorage", error);
+      setWardrobe(initialWardrobe);
+      setCategories(initialCategories);
+    }
   }, []);
 
   useEffect(() => {
@@ -102,9 +108,17 @@ export default function Home() {
     });
   };
 
+  const handleLoadOutfit = (items: CanvasItem[]) => {
+    setCanvasItems(items);
+    toast({
+      title: "Outfit Loaded",
+      description: "The outfit has been loaded onto the canvas.",
+    });
+  };
+
   return (
     <div className="flex h-screen w-full flex-col bg-background font-body">
-      <Header />
+      <Header onLoadOutfit={handleLoadOutfit} />
       <main className="flex flex-1 overflow-hidden">
         <WardrobeSidebar
           items={wardrobe}

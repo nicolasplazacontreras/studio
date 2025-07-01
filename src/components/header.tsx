@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { GalleryHorizontal } from 'lucide-react';
@@ -12,17 +15,29 @@ import {
 } from "@/components/ui/dialog";
 import OutfitGalleryClient from './outfit-gallery-client';
 import { ScrollArea } from './ui/scroll-area';
+import { type CanvasItem } from '@/lib/types';
 
-export default function Header() {
+interface HeaderProps {
+  onLoadOutfit: (items: CanvasItem[]) => void;
+}
+
+export default function Header({ onLoadOutfit }: HeaderProps) {
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
+  const handleLoadAndClose = (items: CanvasItem[]) => {
+    onLoadOutfit(items);
+    setIsGalleryOpen(false);
+  };
+
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6">
       <Link href="/" className="text-xl font-semibold tracking-tighter text-primary">
         WRDROBE
       </Link>
       <nav className="flex items-center gap-2">
-        <Dialog>
+        <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => setIsGalleryOpen(true)}>
               <GalleryHorizontal className="mr-2 h-4 w-4" />
               My Outfits
             </Button>
@@ -31,12 +46,12 @@ export default function Header() {
             <DialogHeader>
               <DialogTitle>My Saved Outfits</DialogTitle>
               <DialogDescription>
-                Here are all the outfits you've created and saved.
+                Here are all the outfits you've created and saved. Click one to load it onto the canvas.
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="flex-1 -mx-6">
                 <div className="px-6 pb-6">
-                    <OutfitGalleryClient />
+                    <OutfitGalleryClient onLoadOutfit={handleLoadAndClose} />
                 </div>
             </ScrollArea>
           </DialogContent>

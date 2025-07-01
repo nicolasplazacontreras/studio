@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { type Outfit } from "@/lib/types";
+import { type Outfit, type CanvasItem } from "@/lib/types";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Trash2 } from "lucide-react";
@@ -11,16 +11,22 @@ import { useToast } from "@/hooks/use-toast";
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 1200;
 
-export default function OutfitGalleryClient() {
+interface OutfitGalleryClientProps {
+  onLoadOutfit: (items: CanvasItem[]) => void;
+}
+
+export default function OutfitGalleryClient({ onLoadOutfit }: OutfitGalleryClientProps) {
   const [savedOutfits, setSavedOutfits] = useState<Outfit[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     const outfitsFromStorage = JSON.parse(localStorage.getItem('wrdrobe_outfits') || '[]');
-    setSavedOutfits(outfitsFromStorage);
-  }, [savedOutfits.length]);
+    // Add a safety check to filter out any items that don't have a valid `items` array
+    setSavedOutfits(outfitsFromStorage.filter((outfit: any) => Array.isArray(outfit.items)));
+  }, []);
 
-  const handleDeleteOutfit = (outfitId: string) => {
+  const handleDeleteOutfit = (e: React.MouseEvent, outfitId: string) => {
+    e.stopPropagation(); // Prevents the card's onClick from firing
     const newOutfits = savedOutfits.filter(outfit => outfit.id !== outfitId);
     setSavedOutfits(newOutfits);
     localStorage.setItem('wrdrobe_outfits', JSON.stringify(newOutfits));
@@ -42,10 +48,14 @@ export default function OutfitGalleryClient() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
       {savedOutfits.map((outfit) => (
-        <Card key={outfit.id} className="group relative overflow-hidden">
+        <Card 
+          key={outfit.id} 
+          className="group relative overflow-hidden cursor-pointer hover:border-primary transition-colors"
+          onClick={() => onLoadOutfit(outfit.items)}
+        >
           <CardContent className="p-0 aspect-square relative bg-gray-100 dark:bg-muted/40">
             <div className="absolute w-full h-full">
-              {Array.isArray(outfit.items) && outfit.items.map((canvasItem) => {
+              {outfit.items.map((canvasItem) => {
                 const containerStyle: React.CSSProperties = {
                   left: `${(canvasItem.x / CANVAS_WIDTH) * 100}%`,
                   top: `${(canvasItem.y / CANVAS_HEIGHT) * 100}%`,
@@ -91,7 +101,7 @@ export default function OutfitGalleryClient() {
             size="icon"
             variant="destructive"
             className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-            onClick={() => handleDeleteOutfit(outfit.id)}
+            onClick={(e) => handleDeleteOutfit(e, outfit.id)}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
