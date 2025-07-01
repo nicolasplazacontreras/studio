@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { GalleryHorizontal } from 'lucide-react';
-import { ThemeToggle } from './theme-toggle';
+import { ThemeSlider } from './theme-slider';
 import {
   Dialog,
   DialogContent,
@@ -56,7 +56,7 @@ export default function Header({ onLoadOutfit }: HeaderProps) {
             </ScrollArea>
           </DialogContent>
         </Dialog>
-        <ThemeToggle />
+        <ThemeSlider />
       </nav>
     </header>
   );
