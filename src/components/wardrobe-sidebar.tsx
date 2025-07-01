@@ -7,7 +7,7 @@ import { EditClothingItemDialog } from './edit-clothing-item-dialog';
 import { ClothingItemCard } from './clothing-item-card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Plus, Sparkles, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import {
   Accordion,
@@ -20,13 +20,11 @@ interface WardrobeSidebarProps {
   items: ClothingItem[];
   onAddItem: (item: Omit<ClothingItem, 'id'>) => void;
   onUpdateItem: (item: ClothingItem) => void;
-  onGetAiSuggestions: () => void;
-  isAiLoading: boolean;
   onDeleteItem: (itemId: string) => void;
   categories: string[];
 }
 
-export default function WardrobeSidebar({ items, onAddItem, onUpdateItem, onGetAiSuggestions, isAiLoading, onDeleteItem, categories }: WardrobeSidebarProps) {
+export default function WardrobeSidebar({ items, onAddItem, onUpdateItem, onDeleteItem, categories }: WardrobeSidebarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingItem, setEditingItem] = useState<ClothingItem | null>(null);
 
@@ -112,12 +110,6 @@ export default function WardrobeSidebar({ items, onAddItem, onUpdateItem, onGetA
             </div>
           )}
         </ScrollArea>
-        <div className="p-4 border-t">
-          <Button className="w-full" onClick={onGetAiSuggestions} disabled={isAiLoading}>
-            <Sparkles className={`mr-2 h-4 w-4 ${isAiLoading ? 'animate-spin' : ''}`} />
-            {isAiLoading ? 'Thinking...' : 'Suggest Outfits with AI'}
-          </Button>
-        </div>
       </aside>
       <EditClothingItemDialog
         isOpen={!!editingItem}

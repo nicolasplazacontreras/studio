@@ -6,10 +6,8 @@ import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
 import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, RefreshCw, Replace, Loader2, Ellipsis, SendToBack, Undo2, Layers, Crop } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { generateOutfitImage } from '@/ai/flows/generate-outfit-image';
 import { removeBackground } from '@/ai/flows/remove-background';
 import { createCutout } from '@/ai/flows/create-cutout';
 import { refineMask } from '@/ai/flows/refine-mask';
@@ -38,10 +36,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   const canvasRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<{[key: string]: HTMLDivElement}>({});
 
-  const [isDownloading, setIsDownloading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [aspectRatio, setAspectRatio] = useState("1:1");
-  const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const [processingItemId, setProcessingItemId] = useState<string | null>(null);
   
@@ -181,34 +176,6 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
         setIsExporting(false);
     }
   };
-
-  const handleDownload = async () => {
-    if (items.length === 0) {
-        toast({ variant: "destructive", title: "Canvas is empty" });
-        return;
-    }
-    setIsDownloading(true);
-    toast({ title: "Generating your outfit image..." });
-    try {
-        const result = await generateOutfitImage({
-            items: items.map(canvasItem => ({
-                photoDataUri: canvasItem.item.photoDataUri,
-                category: canvasItem.item.category,
-            })),
-            aspectRatio: aspectRatio,
-        });
-        const link = document.createElement('a');
-        link.href = result.photoDataUri;
-        link.download = `wrdrobe-outfit-${Date.now()}.png`;
-        link.click();
-        setIsDownloadDialogOpen(false);
-        toast({ title: "Download started!" });
-    } catch (error) {
-        toast({ variant: "destructive", title: "Download Failed" });
-    } finally {
-        setIsDownloading(false);
-    }
-  };
   
   const handleRevert = (canvasItem: CanvasItem) => {
     if (canvasItem.item.originalPhotoDataUri) {
@@ -233,7 +200,6 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             ? { ...item, zIndex: minZIndex - 1 } 
             : item
     ));
-    toast({ title: "Item sent to back" });
   };
   
   const handleAiAction = async (canvasItem: CanvasItem, action: 'cutout' | 'remove') => {
@@ -455,11 +421,6 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setIsDownloadDialogOpen(true)} disabled={isDownloading}>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Generate with AI
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleExportFullCanvas} disabled={isExporting}>
                     <HardDriveDownload className="mr-2 h-4 w-4" />
                     Export full canvas
@@ -471,33 +432,6 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Dialog open={isDownloadDialogOpen} onOpenChange={setIsDownloadDialogOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Download Outfit</DialogTitle>
-                    <DialogDescription>Choose an aspect ratio for your image.</DialogDescription>
-                </DialogHeader>
-                <div className='py-4'>
-                    <RadioGroup defaultValue="1:1" className='flex gap-4' onValueChange={setAspectRatio} disabled={isDownloading}>
-                        <div className='flex items-center space-x-2'>
-                            <RadioGroupItem value="1:1" id="r1"/>
-                            <Label htmlFor="r1">1:1 (Square)</Label>
-                        </div>
-                        <div className='flex items-center space-x-2'>
-                            <RadioGroupItem value="4:5" id="r2"/>
-                            <Label htmlFor="r2">4:5 (Portrait)</Label>
-                        </div>
-                        <div className='flex items-center space-x-2'>
-                            <RadioGroupItem value="9:16" id="r3"/>
-                            <Label htmlFor="r3">9:16 (Story)</Label>
-                        </div>
-                    </RadioGroup>
-                </div>
-                <Button onClick={handleDownload} disabled={isDownloading}>
-                    {isDownloading ? <><Sparkles className="mr-2 h-4 w-4 animate-spin" />Generating...</> : "Confirm Download"}
-                </Button>
-            </DialogContent>
-          </Dialog>
           <Button variant="destructive" size="sm" onClick={() => setItems([])} disabled={isSelectingForExport}>
             <Trash2 className="mr-2 h-4 w-4" />
             Clear

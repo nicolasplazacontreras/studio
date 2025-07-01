@@ -6,8 +6,6 @@ import WardrobeSidebar from '@/components/wardrobe-sidebar';
 import OutfitCanvas from '@/components/outfit-canvas';
 import Header from '@/components/header';
 import { useToast } from '@/hooks/use-toast';
-import { suggestOutfit, type SuggestOutfitOutput } from '@/ai/flows/suggest-outfit';
-import AiSuggestionsDialog from '@/components/ai-suggestions-dialog';
 
 const initialWardrobe: ClothingItem[] = [
   { id: '1', name: 'White T-Shirt', category: 'Tops', photoDataUri: 'https://placehold.co/400x400.png', tags: ['summer', 'casual', 'basic'], "data-ai-hint": "white t-shirt" },
@@ -21,15 +19,11 @@ const initialWardrobe: ClothingItem[] = [
   { id: '9', name: 'Leather Backpack', category: 'Bags', photoDataUri: 'https://placehold.co/400x400.png', tags: ['casual', 'work'], "data-ai-hint": "leather backpack" },
 ];
 
-const initialCategories = ['Hats', 'Tops', 'Bottoms', 'Shoes', 'Accessories', 'Bags'];
+const initialCategories = ['Hats', 'Tops', 'Bottoms', 'Shoes', 'Accessories', 'Bags', 'Other'];
 
 export default function Home() {
   const [wardrobe, setWardrobe] = useState<ClothingItem[]>([]);
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
-  const [aiSuggestions, setAiSuggestions] = useState<SuggestOutfitOutput | null>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
-  
   const [categories, setCategories] = useState<string[]>([]);
 
   const { toast } = useToast();
@@ -108,71 +102,6 @@ export default function Home() {
     });
   };
 
-  const handleGetAiSuggestions = async () => {
-    if (wardrobe.length < 3) {
-      toast({
-        variant: 'destructive',
-        title: 'Not Enough Clothing',
-        description: 'Please add at least 3 items to your wardrobe for AI suggestions.',
-      });
-      return;
-    }
-    setIsAiLoading(true);
-    try {
-      const suggestions = await suggestOutfit({
-        clothingItems: wardrobe.map(item => ({
-          name: item.name,
-          category: item.category,
-          photoDataUri: item.photoDataUri,
-          description: '',
-          tags: item.tags,
-        })),
-      });
-      setAiSuggestions(suggestions);
-      setIsAiDialogOpen(true);
-    } catch (error) {
-      console.error('AI suggestion failed:', error);
-      toast({
-        variant: 'destructive',
-        title: 'AI Suggestion Failed',
-        description: 'Could not generate outfit suggestions. Please try again.',
-      });
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
-  const handleUseSuggestedOutfit = (suggestedItems: {name: string, category: string, photoDataUri: string}[]) => {
-    let currentX = 50;
-    let currentY = 50;
-    const maxZIndex = Math.max(0, ...canvasItems.map(i => i.zIndex || 0));
-    
-    const newCanvasItems: CanvasItem[] = suggestedItems.map((suggestedItem, index) => {
-        const wardrobeItem = wardrobe.find(item => item.name === suggestedItem.name && item.photoDataUri === suggestedItem.photoDataUri);
-        if (!wardrobeItem) return null;
-
-        const canvasItem: CanvasItem = {
-            instanceId: `${wardrobeItem.id}-${Date.now()}-${index}`,
-            item: wardrobeItem,
-            x: currentX,
-            y: currentY,
-            width: 250,
-            height: 250,
-            zIndex: maxZIndex + index + 1
-        };
-        currentX += 75;
-        currentY += 75;
-        return canvasItem;
-    }).filter((item): item is CanvasItem => item !== null);
-
-    setCanvasItems(newCanvasItems);
-    setIsAiDialogOpen(false);
-    toast({
-        title: 'Outfit Applied',
-        description: 'The suggested outfit is now on your canvas.',
-    });
-  };
-
   return (
     <div className="flex h-screen w-full flex-col bg-background font-body">
       <Header />
@@ -181,8 +110,6 @@ export default function Home() {
           items={wardrobe}
           onAddItem={handleAddItem}
           onUpdateItem={handleUpdateItem}
-          onGetAiSuggestions={handleGetAiSuggestions}
-          isAiLoading={isAiLoading}
           onDeleteItem={handleDeleteItem}
           categories={categories}
         />
@@ -193,14 +120,6 @@ export default function Home() {
           onItemUpdate={handleUpdateItem}
         />
       </main>
-      {aiSuggestions && (
-        <AiSuggestionsDialog
-          isOpen={isAiDialogOpen}
-          onOpenChange={setIsAiDialogOpen}
-          suggestions={aiSuggestions}
-          onUseOutfit={handleUseSuggestedOutfit}
-        />
-      )}
     </div>
   );
 }
