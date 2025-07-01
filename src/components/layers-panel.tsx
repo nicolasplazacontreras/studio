@@ -67,7 +67,7 @@ export function LayersPanel({ isOpen, onOpenChange, items, setItems, keepLayersO
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-80 p-0 flex flex-col">
+      <SheetContent side="right" className="w-80 p-0 flex flex-col">
         <SheetHeader className="p-4 border-b shrink-0">
           <SheetTitle>Edit Layers</SheetTitle>
           <SheetDescription>
