@@ -4,8 +4,8 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { type ClothingItem, type CanvasItem } from '@/lib/types';
 import { Button } from './ui/button';
-import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, Eye } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { Download, Save, Trash2, X, Sparkles, HardDriveDownload, Scissors, Undo, ImageIcon, Wand2, Eye, RefreshCw, Replace, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,7 @@ import { createCutout } from '@/ai/flows/create-cutout';
 import { toJpeg } from 'html-to-image';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 import { Rnd } from 'react-rnd';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface OutfitCanvasProps {
   items: CanvasItem[];
@@ -41,11 +42,15 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false);
   const [isOver, setIsOver] = useState(false);
   const [processingItemId, setProcessingItemId] = useState<string | null>(null);
-  const [viewingMask, setViewingMask] = useState<string | null>(null);
+  
+  const [refiningItemInstanceId, setRefiningItemInstanceId] = useState<string | null>(null);
+  const [isRefiningMask, setIsRefiningMask] = useState(false);
 
   const [selectedInstanceIds, setSelectedInstanceIds] = useState<string[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState<{ x: number, y: number, width: number, height: number, startX: number, startY: number } | null>(null);
+
+  const refiningItem = items.find(item => item.instanceId === refiningItemInstanceId);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -137,6 +142,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             photoDataUri: canvasItem.item.originalPhotoDataUri,
             originalPhotoDataUri: undefined,
             maskDataUri: undefined,
+            lastAiAction: undefined,
         };
         onItemUpdate(updatedItem);
         toast({ title: "Reverted to Original" });
@@ -160,6 +166,7 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
             photoDataUri: canvasItem.item.originalPhotoDataUri || canvasItem.item.photoDataUri,
             maskDataUri: result.maskDataUri, 
             originalPhotoDataUri: canvasItem.item.originalPhotoDataUri || canvasItem.item.photoDataUri,
+            lastAiAction: action,
         };
 
         onItemUpdate(updatedItem);
@@ -250,6 +257,61 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
     setItems(items.map(item => item.instanceId === instanceId ? { ...item, zIndex: maxZIndex + 1 } : item));
   };
   
+    const invertImage = (dataUri: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const img = new window.Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    reject(new Error('Could not get canvas context'));
+                    return;
+                }
+                ctx.drawImage(img, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = 255 - data[i];     // red
+                    data[i + 1] = 255 - data[i + 1]; // green
+                    data[i + 2] = 255 - data[i + 2]; // blue
+                }
+                ctx.putImageData(imageData, 0, 0);
+                resolve(canvas.toDataURL());
+            };
+            img.onerror = reject;
+            img.src = dataUri;
+        });
+    };
+
+    const handleInvertMask = async () => {
+        if (!refiningItem || !refiningItem.item.maskDataUri) return;
+        
+        setIsRefiningMask(true);
+        try {
+            const invertedMaskUri = await invertImage(refiningItem.item.maskDataUri);
+            const updatedItem: ClothingItem = {
+                ...refiningItem.item,
+                maskDataUri: invertedMaskUri,
+            };
+            onItemUpdate(updatedItem);
+            toast({ title: "Mask Inverted" });
+        } catch (error) {
+            console.error("Failed to invert mask:", error);
+            toast({ variant: 'destructive', title: 'Invert Failed' });
+        } finally {
+            setIsRefiningMask(false);
+        }
+    };
+
+    const handleRegenerateMask = async () => {
+        if (!refiningItem || !refiningItem.item.lastAiAction) return;
+        setIsRefiningMask(true);
+        await handleAiAction(refiningItem, refiningItem.item.lastAiAction);
+        setIsRefiningMask(false);
+    };
+
   return (
     <div className="flex flex-1 flex-col bg-muted/30 p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
@@ -312,15 +374,26 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
           </Button>
         </div>
       </div>
-       <Dialog open={!!viewingMask} onOpenChange={(isOpen) => !isOpen && setViewingMask(null)}>
+       <Dialog open={!!refiningItem} onOpenChange={(isOpen) => !isOpen && setRefiningItemInstanceId(null)}>
           <DialogContent>
               <DialogHeader>
-                  <DialogTitle>Mask Preview</DialogTitle>
+                  <DialogTitle>Refine Mask</DialogTitle>
                   <DialogDescription>
-                      This is the black and white mask the AI generated. White areas are visible, black areas are hidden.
+                      You can regenerate the mask or invert its colors if the wrong parts are hidden.
                   </DialogDescription>
               </DialogHeader>
-              {viewingMask && <Image src={viewingMask} alt="Mask preview" width={512} height={512} className="rounded-md mx-auto bg-gray-200" />}
+              {refiningItem?.item.maskDataUri && <Image src={refiningItem.item.maskDataUri} alt="Mask preview" width={512} height={512} className="rounded-md mx-auto bg-gray-200" />}
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setRefiningItemInstanceId(null)} disabled={isRefiningMask}>Close</Button>
+                  <Button onClick={handleInvertMask} disabled={isRefiningMask}>
+                      {isRefiningMask ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Replace className="mr-2 h-4 w-4" />}
+                      Invert Colors
+                  </Button>
+                  <Button onClick={handleRegenerateMask} disabled={isRefiningMask}>
+                      {isRefiningMask ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                      Regenerate
+                  </Button>
+              </DialogFooter>
           </DialogContent>
       </Dialog>
       <div 
@@ -435,18 +508,27 @@ export default function OutfitCanvas({ items, setItems, onSave, onItemUpdate }: 
                     </DropdownMenu>
                     
                     {canvasItem.item.maskDataUri && (
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="absolute -bottom-3 -left-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setViewingMask(canvasItem.item.maskDataUri!);
-                            }}
-                        >
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">Check Mask</span>
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="absolute -bottom-3 -left-3 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10 rounded-full"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setRefiningItemInstanceId(canvasItem.instanceId);
+                                        }}
+                                    >
+                                        <Eye className="h-4 w-4" />
+                                        <span className="sr-only">Refine Mask</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">
+                                    <p>Refine Mask</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     )}
 
                     <Button

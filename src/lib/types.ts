@@ -7,6 +7,7 @@ export interface ClothingItem {
   maskDataUri?: string;
   tags?: string[];
   "data-ai-hint"?: string;
+  lastAiAction?: 'cutout' | 'remove';
 }
 
 // A clothing item placed on the canvas
