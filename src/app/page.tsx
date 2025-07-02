@@ -18,6 +18,7 @@ const initialWardrobe: ClothingItem[] = [
   { id: '7', name: 'Gold Necklace', category: 'Accessories', photoDataUri: 'https://placehold.co/400x400.png', tags: ['jewelry', 'going-out'], "data-ai-hint": "gold necklace" },
   { id: '8', name: 'Baseball Cap', category: 'Hats', photoDataUri: 'https://placehold.co/400x400.png', tags: ['casual', 'summer'], "data-ai-hint": "baseball cap" },
   { id: '9', name: 'Leather Backpack', category: 'Bags', photoDataUri: 'https://placehold.co/400x400.png', tags: ['casual', 'work'], "data-ai-hint": "leather backpack" },
+  { id: '10', name: 'Plaid Scarf', category: 'Other', photoDataUri: 'https://placehold.co/400x400.png', tags: ['winter', 'cozy'], "data-ai-hint": "plaid scarf" },
 ];
 
 const initialCategories = ['Hats', 'Tops', 'Bottoms', 'Shoes', 'Accessories', 'Bags', 'Other'];
@@ -37,8 +38,11 @@ export default function Home() {
       const savedWardrobe = localStorage.getItem('wrdrobe_wardrobe');
       setWardrobe(savedWardrobe ? JSON.parse(savedWardrobe) : initialWardrobe);
       
-      const savedCategories = localStorage.getItem('wrdrobe_categories');
-      setCategories(savedCategories ? JSON.parse(savedCategories) : initialCategories);
+      const savedCategoriesJSON = localStorage.getItem('wrdrobe_categories');
+      const savedCategories = savedCategoriesJSON ? JSON.parse(savedCategoriesJSON) : [];
+      // This ensures all initial categories are present, even if not in localStorage.
+      const allCategories = [...new Set([...initialCategories, ...savedCategories])];
+      setCategories(allCategories);
 
       const outfitsFromStorage = localStorage.getItem('wrdrobe_outfits');
       setSavedOutfits(outfitsFromStorage ? JSON.parse(outfitsFromStorage) : []);
